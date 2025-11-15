@@ -1,0 +1,43 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ${TENANT_NAME}
+  labels:
+    tenant: ${TENANT_NAME}
+    name: ${TENANT_NAME}
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: ${TENANT_NAME}-quota
+  namespace: ${TENANT_NAME}
+spec:
+  hard:
+    requests.cpu: "10"
+    requests.memory: 20Gi
+    limits.cpu: "20"
+    limits.memory: 40Gi
+    persistentvolumeclaims: "10"
+    pods: "50"
+    services: "10"
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: ${TENANT_NAME}-limit-range
+  namespace: ${TENANT_NAME}
+spec:
+  limits:
+  - max:
+      cpu: "4"
+      memory: "8Gi"
+    min:
+      cpu: "100m"
+      memory: "128Mi"
+    default:
+      cpu: "500m"
+      memory: "512Mi"
+    defaultRequest:
+      cpu: "200m"
+      memory: "256Mi"
+    type: Container

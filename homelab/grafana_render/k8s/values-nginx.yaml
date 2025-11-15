@@ -1,0 +1,19 @@
+prometheus:
+  ## Expose NGINX or NGINX Plus metrics in the Prometheus format.
+  create: true
+
+  ## Configures the port to scrape the metrics.
+  port: 9113
+
+  secret: ""
+
+  ## Configures the HTTP scheme used.
+  scheme: http
+
+  service:
+    ## Requires prometheus.create=true
+    create: true
+
+  serviceMonitor:
+    create: true
+    labels: { app: nginx-ingress-servicemonitor } 

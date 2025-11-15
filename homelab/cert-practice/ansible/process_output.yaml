@@ -1,0 +1,40 @@
+---
+- name: Capture and process command output
+  hosts: localhost
+  tasks:
+    - name: Get disk usage information
+      command: df -h
+      register: df_output
+
+    - name: Display all partitions
+      debug:
+        msg: "{{ df_output.stdout_lines }}"
+
+    - name: Find root partition
+      set_fact:
+        root_partition: "{{ df_output.stdout_lines | select('match', '\\s+/$') | first | default('') }}"
+
+    - name: Display root partition information
+      debug:
+        msg: "Root partition: {{ root_partition }}"
+      when: root_partition != ''
+
+    - name: Extract usage percentage
+      set_fact:
+        root_usage: "{{ root_partition.split()[-2].rstrip('%') | int }}"
+      when: root_partition != ''
+
+    - name: Display root partition usage
+      debug:
+        msg: "Root partition is {{ root_usage }}% full"
+      when: root_partition != ''
+
+    - name: Check if root partition is over 80% full
+      fail:
+        msg: "Warning: Root partition is over 80% full!"
+      when: root_partition != '' and root_usage > 80
+
+    - name: Display message if root partition not found
+      debug:
+        msg: "Root partition (/) not found in df output"
+      when: root_partition == ''

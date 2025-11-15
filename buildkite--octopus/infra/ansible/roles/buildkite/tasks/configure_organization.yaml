@@ -1,0 +1,58 @@
+---
+- name: "Buildkite | Configure | Directories | {{ organization.name }}"
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    recurse: true
+    mode: "0644"
+  loop:
+    - "/var/lib/buildkite-agent/.aws/{{ organization.name }}"
+    - "/var/lib/buildkite-agent/.gcp/{{ organization.name }}"
+    - "/var/lib/buildkite-agent/{{ organization.name }}"
+    - "/var/lib/buildkite-agent/{{ organization.name }}/builds"
+    - "/etc/buildkite-agent/{{ organization.name }}"
+    - "/etc/buildkite-agent/{{ organization.name }}/hooks"
+    - "/etc/buildkite-agent/{{ organization.name }}/plugins"
+
+- name: "Buildkite | Configure | AWS Credentials | {{ organization.name }}"
+  ansible.builtin.template:
+    src: templates/aws_credentials.j2
+    dest: "/var/lib/buildkite-agent/.aws/{{ organization.name }}/credentials"
+    mode: "0644"
+
+- name: "Buildkite | Configure | GCP Credentials | {{ organization.name }}"
+  ansible.builtin.copy:
+    content: "{{ organization.gcp.key | b64decode }}"
+    dest: "/var/lib/buildkite-agent/.gcp/{{ organization.name }}/credentials.json"
+    mode: "0644"
+
+- name: "Buildkite | Configure | Agent | {{ organization.name }}"
+  ansible.builtin.template:
+    src: templates/agent.cfg.j2
+    dest: "/etc/buildkite-agent/{{ organization.name }}/buildkite-agent.cfg"
+    mode: "0644"
+
+- name: "Buildkite | Configure | Environment | {{ organization.name }}"
+  ansible.builtin.template:
+    src: templates/environment.j2
+    dest: "/etc/buildkite-agent/{{ organization.name }}/hooks/environment"
+    mode: "0644"
+
+- name: "Buildkite | Configure | Pre-Checkout | {{ organization.name }}"
+  ansible.builtin.template:
+    src: templates/pre-checkout.j2
+    dest: "/etc/buildkite-agent/{{ organization.name }}/hooks/pre-checkout"
+    mode: "0644"
+
+- name: "Buildkite | Configure | Systemd Service | {{ organization.name }}"
+  ansible.builtin.template:
+    src: templates/systemd.service.j2
+    dest: "/etc/systemd/system/buildkite-agent-{{ organization.name }}.service"
+    mode: "0644"
+
+- name: "Buildkite | Configure | Restart | {{ organization.name }}"
+  ansible.builtin.systemd:
+    name: "buildkite-agent-{{ organization.name }}"
+    state: restarted
+    enabled: true
+    daemon_reload: true

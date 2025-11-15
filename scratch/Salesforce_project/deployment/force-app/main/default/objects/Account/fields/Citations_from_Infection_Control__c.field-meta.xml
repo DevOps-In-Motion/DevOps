@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+<fullName>Citations_from_Infection_Control__c</fullName>
+        <label>Num Citations from Infection Control ...</label>
+        <type>Number</type>
+        <precision>10</precision>
+        <scale>0</scale>
+</CustomField>

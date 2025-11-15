@@ -1,0 +1,77 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "MYAPP"
+  namespace: default
+  labels:
+    app: "MYAPP"
+spec:
+  serviceAccountName: build-robot
+  containers:
+  - name: MYAPP
+    image: "debian-slim:latest"
+    resources:
+      limits:
+        cpu: 200m
+        memory: 500Mi
+      requests:
+        cpu: 100m
+        memory: 200Mi
+    env:
+    - name: NODE_NAME
+      value: 'control-plane'
+    ports:
+    - containerPort:  80
+      name:  http
+    volumeMounts:
+    - name: localtime
+      mountPath: /etc/localtime
+  volumes:
+    - name: localtime
+      hostPath:
+        path: /var/shared/s
+  restartPolicy: Always
+  priorityClassName: high-priority
+
+---
+
+apiVersion: v1
+kind: Pod
+metadata:
+  creationTimestamp: null
+  labels:
+    run: mc-pod
+  name: mc-pod
+  namespace: mc-namespace
+spec:
+  containers:
+  - image: nginx:1-alpine
+    name: mc-pod-1
+    resources: {}
+    env:
+    - name: NODE_NAME
+      value: 'control-plane'
+
+  - image: busybox:1
+    name: mc-pod-2
+    command: ["/bin/sh"]
+    args: ["-c", "while true; do date >> /var/log/shared/date.log; sleep 1; done "]
+    volumeMounts:
+    - name: shared-volume
+      mountPath: /var/log/shared
+
+  - image: busybox:1
+    name: mc-pod-3
+    command: ["/bin/cat"]
+    args: ["-c", "tail -f /var/log/shared/date.log"]
+    volumeMounts:
+    - name: shared-volume
+      mountPath: /var/log/shared
+  dnsPolicy: ClusterFirst
+  restartPolicy: Always
+  volumes:
+  - name: shared-volume
+    emptyDir: {}
+status: {}
+
+

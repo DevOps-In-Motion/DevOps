@@ -1,0 +1,29 @@
+1. Simple loop:
+{% for item in simple_list %}
+   - {{ item }}
+{% endfor %}
+
+2. Loop with index:
+{% for item in simple_list %}
+   {{ loop.index }}. {{ item }}
+{% endfor %}
+
+3. Loop over a dictionary:
+{% for key, value in simple_dict.items() %}
+   {{ key }}: {{ value }}
+{% endfor %}
+
+4. Nested loop:
+{% for category, items in nested_dict.items() %}
+   {{ category }}:
+   {% for item in items %}
+     - {{ item }}
+   {% endfor %}
+{% endfor %}
+
+5. Conditional in loop:
+{% for item in simple_list %}
+   {% if loop.first %}First item: {% endif %}
+   {% if loop.last %}Last item: {% endif %}
+   {{ item }}
+{% endfor %}

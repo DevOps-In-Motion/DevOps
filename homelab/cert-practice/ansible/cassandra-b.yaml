@@ -1,0 +1,45 @@
+- name: Cassandra Installation Playbook
+  hosts: all
+  become: true
+  tasks:
+
+  - name: "Ensure group  exists"
+    ansible.builtin.group:
+      name: ""
+      state: present
+
+  - name: "Create  user"
+    ansible.builtin.user:
+      name: ""
+      group: ""
+      shell: /bin/bash
+      append: yes
+      comment: "Cassandra User"
+      state: present
+
+  - name: Installing cassandra tarball
+    ansible.builtin.get_url:
+      url: https://archive.apache.org/dist/cassandra//apache-cassandra--bin.tar.gz
+      dest: ""
+      mode: 0755
+      owner: ""
+      group: ""
+
+
+  - name: Extract cassandra tarball
+    unarchive:
+      src: "/apache-cassandra--bin.tar.gz"
+      dest: ""
+      remote_src: true
+      owner: ""
+      group: ""
+
+
+  - name: Change ownership of the installation folder
+    become: true
+    file:
+      path: "/apache-cassandra-/"
+      owner: ""
+      group: ""
+      recurse: true
+      state: directory

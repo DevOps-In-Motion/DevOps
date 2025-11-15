@@ -1,0 +1,13 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: cassandra
+  namespace: cassandra
+spec:
+  selector:
+    matchLabels:
+      app: cassandra
+  endpoints:
+  - port: metrics
+    interval: 30s
+    path: /metrics

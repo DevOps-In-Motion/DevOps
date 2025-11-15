@@ -1,0 +1,12 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: grafana-cert
+  namespace: monitoring
+spec:
+  secretName: grafana-secret  # The name of the secret that will store the TLS cert
+  issuerRef:
+    name: letsencrypt-prod  # The ACME issuer (Make sure this matches your issuer)
+    kind: ClusterIssuer  # If using a ClusterIssuer, else use Issuer
+  dnsNames:
+    - grafana.demos.kubiya.ai  # The domain name for the certificate

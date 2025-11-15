@@ -1,0 +1,14 @@
+---
+- name: Conditional Example
+  hosts: localhost
+  gather_facts: yes # tells Ansible to collect information about the system before running tasks. This is important because we'll use these facts in our conditions.
+  tasks:
+    - name: Check OS family
+      debug:
+        msg: "This is a Debian-based system"
+      when: ansible_os_family == "Debian"
+
+    - name: Check OS family (alternative)
+      debug:
+        msg: "This is not a Debian-based system"
+      when: ansible_os_family != "Debian"

@@ -1,0 +1,7 @@
+---
+- name: Show HTTP Port
+  hosts: web
+  tasks:
+    - name: Display HTTP Port
+      debug:
+        msg: "The HTTP port is {{ http_port }}"

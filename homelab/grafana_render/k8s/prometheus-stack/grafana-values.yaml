@@ -1,0 +1,40 @@
+image:
+  repository: grafana/grafana
+  tag: latest
+  pullPolicy: IfNotPresent
+
+service:
+  type: LoadBalancer
+
+persistence:
+  enabled: true
+  accessModes:
+    - ReadWriteOnce
+  size: 10Gi
+
+# plugins:
+# - grafana-clock-panel
+
+grafana.ini:
+  server:
+    root_url: "%(protocol)s://%(domain)s/"
+  rendering:
+    server_url: http://grafana-image-renderer.monitoring.svc.cluster.local:8081/render
+    callback_url: http://grafana.monitoring.svc.cluster.local/
+  level: debug
+  # Uncomment and adjust if necessary
+  # timeouts:
+  #   render_request_timeout: 60
+
+env:
+  GF_RENDERING_SERVER_URL: http://grafana-image-renderer.monitoring.svc.cluster.local:8081/render
+  GF_RENDERING_CALLBACK_URL: http://grafana.monitoring.svc.cluster.local/
+  GF_RENDERING_PLUGIN_SKIP_DOWNLOAD: "true"
+
+resources:
+  requests:
+    cpu: 500m
+    memory: 1Gi
+  limits:
+    cpu: 1000m
+    memory: 2Gi

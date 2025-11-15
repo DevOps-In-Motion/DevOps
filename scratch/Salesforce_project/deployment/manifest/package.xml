@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>Account.CMS_Certification_Number__c</members>
+        <members>Account.Provider_Name__c</members>
+        <members>Account.Provider_Address__c</members>
+        <members>Account.City_Town__c</members>
+        <members>Account.State__c</members>
+        <members>Account.ZIP_Code__c</members>
+        <members>Account.Telephone_Number__c</members>
+        <members>Account.Overall_Rating__c</members>
+        <members>Account.Health_Inspection_Rating__c</members>
+        <members>Account.Total_Amount_of_Fines_in_Dollars__c</members>
+        <name>CustomField</name>
+    </types>
+    <version>58.0</version>
+</Package>

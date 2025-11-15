@@ -1,0 +1,88 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: ${TENANT_NAME}-db
+  namespace: ${TENANT_NAME}
+  labels:
+    app: database
+    tenant: ${TENANT_NAME}
+spec:
+  serviceName: ${TENANT_NAME}-db-service
+  replicas: 1
+  selector:
+    matchLabels:
+      app: database
+      tenant: ${TENANT_NAME}
+  template:
+    metadata:
+      labels:
+        app: database
+        tenant: ${TENANT_NAME}
+    spec:
+      containers:
+      - name: postgres
+        image: postgres:15-alpine
+        ports:
+        - containerPort: 5432
+          name: postgres
+        env:
+        - name: PGDATA
+          value: /var/lib/postgresql/data/pgdata
+        envFrom:
+        - secretRef:
+            name: ${TENANT_NAME}-db-secret
+        - configMapRef:
+            name: ${TENANT_NAME}-db-config
+        volumeMounts:
+        - name: db-data
+          mountPath: /var/lib/postgresql/data
+        resources:
+          requests:
+            cpu: 500m
+            memory: 1Gi
+          limits:
+            cpu: 2000m
+            memory: 4Gi
+        livenessProbe:
+          exec:
+            command:
+            - pg_isready
+            - -U
+            - $(POSTGRES_USER)
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          exec:
+            command:
+            - pg_isready
+            - -U
+            - $(POSTGRES_USER)
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+      volumes:
+      - name: db-data
+        persistentVolumeClaim:
+          claimName: ${TENANT_NAME}-db-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ${TENANT_NAME}-db-service
+  namespace: ${TENANT_NAME}
+  labels:
+    app: database
+    tenant: ${TENANT_NAME}
+spec:
+  type: ClusterIP
+  clusterIP: None
+  ports:
+  - port: 5432
+    targetPort: 5432
+    name: postgres
+  selector:
+    app: database
+    tenant: ${TENANT_NAME}

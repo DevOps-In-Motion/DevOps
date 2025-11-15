@@ -1,0 +1,7 @@
+---
+- name: Use our example role
+  hosts: localhost
+  vars:
+    example_var: "This overrides a var from a role if needed."
+  roles:
+    - example_role

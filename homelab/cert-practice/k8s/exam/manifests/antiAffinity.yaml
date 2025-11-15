@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    level: hobby
+  name: hobby-project
+spec:
+  containers:
+  - image: nginx:alpine
+    name: c
+  # make pod unschedulable on nodes were there are labels 'level:restricted'
+  affinity:
+    podAntiAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        - labelSelector:
+            matchExpressions:
+              - key: level
+                operator: NotIn
+                values:
+                - restricted
+          topologyKey: kubernetes.io/hostname

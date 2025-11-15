@@ -1,0 +1,9 @@
+- hosts: localhost
+  tasks:
+    - name: Execute script with a variable
+      script: /home/labex/project/var_script.sh "{{ message }}"
+      register: variable_script_output
+
+    - name: Display variable script output
+      debug:
+        var: variable_script_output.stdout_lines

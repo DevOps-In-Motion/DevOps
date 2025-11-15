@@ -1,0 +1,77 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: cassandra
+  namespace: cassandra
+spec:
+  serviceName: cassandra
+  replicas: 3
+  selector:
+    matchLabels:
+      app: cassandra
+  template:
+    metadata:
+      labels:
+        app: cassandra
+    spec:
+      terminationGracePeriodSeconds: 1800
+      containers:
+      - name: cassandra
+        image: your-registry/cassandra:5.0-custom
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 7000
+          name: intra-node
+        - containerPort: 7001
+          name: tls-intra-node
+        - containerPort: 7199
+          name: jmx
+        - containerPort: 9042
+          name: cql
+        - containerPort: 9404
+          name: metrics
+        resources:
+          limits:
+            cpu: "2"
+            memory: 4Gi
+          requests:
+            cpu: "1"
+            memory: 2Gi
+        env:
+        - name: MAX_HEAP_SIZE
+          value: 2G
+        - name: HEAP_NEWSIZE
+          value: 512M
+        - name: CASSANDRA_SEEDS
+          value: "cassandra-0.cassandra.cassandra.svc.cluster.local"
+        - name: CASSANDRA_CLUSTER_NAME
+          value: "CassandraCluster2025"
+        - name: CASSANDRA_DC
+          value: "DC1"
+        - name: CASSANDRA_RACK
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        volumeMounts:
+        - name: cassandra-data
+          mountPath: /var/lib/cassandra
+        - name: cassandra-config
+          mountPath: /etc/cassandra/cassandra.yaml
+          subPath: cassandra.yaml
+      volumes:
+      - name: cassandra-config
+        configMap:
+          name: cassandra-config
+  volumeClaimTemplates:
+  - metadata:
+      name: cassandra-data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      storageClassName: fast-ssd
+      resources:
+        requests:
+          storage: 100Gi

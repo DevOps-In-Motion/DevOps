@@ -1,0 +1,27 @@
+---
+- name: Use Jinja2 filters
+  hosts: localhost
+  vars:
+    name: "ansible learner"
+    fruits:
+      - apple
+      - banana
+      - cherry
+    complex_data:
+      key1: value1
+      key2:
+        - item1
+        - item2
+  tasks:
+    - name: Create file from template
+      template:
+        src: templates/filters.j2
+        dest: /tmp/filters.txt
+
+    - name: Display file contents
+      command: cat /tmp/filters.txt
+      register: file_contents
+
+    - name: Show file contents
+      debug:
+        var: file_contents.stdout_lines
