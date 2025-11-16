@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
-<fullName>Avg_Residents_per_Day_Footnote__c</fullName>
-        <label>Avg Num Residents per Day Footnote</label>
-        <type>Text</type>
-        <length>255</length>
-</CustomField>

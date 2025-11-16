@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
-<fullName>Total_Weighted_Health_Survey_Score__c</fullName>
-        <label>Total Weighted Health Survey Score</label>
-        <type>Number</type>
-        <precision>10</precision>
-        <scale>2</scale>
-</CustomField>

@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
-<fullName>Cycle_1_Total_Health_Score__c</fullName>
-        <label>Rating Cycle 1 Total Health Score</label>
-        <type>Number</type>
-        <precision>10</precision>
-        <scale>2</scale>
-</CustomField>

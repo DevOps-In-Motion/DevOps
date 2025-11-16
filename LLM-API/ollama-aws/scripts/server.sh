@@ -1,3 +1,0 @@
-#!/bin/bash
-
-./ollama serve > output.txt 2>&1 & ./ollama run llama3.2 2>/dev/null

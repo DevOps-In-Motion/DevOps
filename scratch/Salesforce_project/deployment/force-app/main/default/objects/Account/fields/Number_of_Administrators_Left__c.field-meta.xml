@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
-<fullName>Number_of_Administrators_Left__c</fullName>
-        <label>Num administrators who have left the ...</label>
-        <type>Number</type>
-        <precision>10</precision>
-        <scale>0</scale>
-</CustomField>

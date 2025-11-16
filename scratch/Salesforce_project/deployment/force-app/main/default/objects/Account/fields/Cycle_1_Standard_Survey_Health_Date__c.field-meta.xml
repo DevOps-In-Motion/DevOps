@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
-<fullName>Cycle_1_Standard_Survey_Health_Date__c</fullName>
-        <label>Cycle 1 Standard Survey Health Date</label>
-        <type>Date</type>
-</CustomField>

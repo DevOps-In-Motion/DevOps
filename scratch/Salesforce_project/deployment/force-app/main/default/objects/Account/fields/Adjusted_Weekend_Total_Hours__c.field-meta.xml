@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
-<fullName>Adjusted_Weekend_Total_Hours__c</fullName>
-        <label>Adj Weekend Total Nurse Hours/Residen...</label>
-        <type>Number</type>
-        <precision>10</precision>
-        <scale>2</scale>
-</CustomField>

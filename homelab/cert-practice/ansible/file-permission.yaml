@@ -1,6 +1,0 @@
-- hosts: localhost
-  tasks:
-    - name: Set file permissions
-      file:
-        path: /home/labex/file.txt
-        mode: "0644"

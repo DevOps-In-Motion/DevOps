@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
-<fullName>Total_Nursing_Staff_Turnover_Footnote__c</fullName>
-        <label>Total nursing staff turnover footnote</label>
-        <type>Text</type>
-        <length>255</length>
-</CustomField>

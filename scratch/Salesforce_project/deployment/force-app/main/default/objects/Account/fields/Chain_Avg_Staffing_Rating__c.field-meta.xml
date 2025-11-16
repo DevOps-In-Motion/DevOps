@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
-<fullName>Chain_Avg_Staffing_Rating__c</fullName>
-        <label>Chain Average Staffing Rating</label>
-        <type>Number</type>
-        <precision>3</precision>
-        <scale>2</scale>
-</CustomField>

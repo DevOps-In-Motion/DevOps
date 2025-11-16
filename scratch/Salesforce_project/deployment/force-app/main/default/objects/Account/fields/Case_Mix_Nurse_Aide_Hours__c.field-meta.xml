@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
-<fullName>Case_Mix_Nurse_Aide_Hours__c</fullName>
-        <label>CaseMix Nurse Aide Hours/Resident/Day</label>
-        <type>Number</type>
-        <precision>10</precision>
-        <scale>2</scale>
-</CustomField>

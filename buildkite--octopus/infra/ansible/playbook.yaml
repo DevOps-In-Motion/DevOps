@@ -1,8 +1,0 @@
---- 
-  - name: install buildkite
-    hosts: all
-    remote_user: ubuntu
-    become: yes
-
-    roles:
-      - buildkite

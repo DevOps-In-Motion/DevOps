@@ -1,9 +1,0 @@
----
-# Playbook starts with three dashes
-- name: My First Playbook # Name of the play
-  hosts: web # Target host(s) for this play
-
-  tasks: # List of tasks to be executed
-    - name: display a var # Name of the first task
-      debug:
-        msg: "This host exposes port {{ http_port }}"
