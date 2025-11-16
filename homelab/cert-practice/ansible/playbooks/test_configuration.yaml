@@ -1,0 +1,25 @@
+---
+- name: Test Custom Configuration
+  hosts: all
+  tasks:
+    - name: Display remote user
+      debug:
+        msg: "Connected as user: {{ ansible_user }}"
+
+    - name: Display privilege escalation info
+      debug:
+        msg: "Privilege escalation is {{ 'enabled' if ansible_become | default(false) else 'disabled' }}"
+
+    - name: Show Ansible configuration
+      debug:
+        msg: "Inventory file: {{ lookup('config', 'DEFAULT_HOST_LIST') }}"
+
+    - name: Check if become is enabled in ansible.cfg
+      command: grep "become = True" /home/labex/project/ansible.cfg
+      register: become_check
+      changed_when: false
+      failed_when: false
+
+    - name: Display become setting from ansible.cfg
+      debug:
+        msg: "Become is {{ 'enabled' if become_check.rc == 0 else 'disabled' }} in ansible.cfg"

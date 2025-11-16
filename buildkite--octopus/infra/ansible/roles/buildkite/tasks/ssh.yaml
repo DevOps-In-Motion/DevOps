@@ -1,0 +1,13 @@
+---
+- name: Buildkite | SSH | Directory
+  ansible.builtin.file:
+    path: /var/lib/buildkite-agent/.ssh
+    state: directory
+    mode: "0600"
+    recurse: true
+
+- name: Buildkite | SSH | Key
+  ansible.builtin.copy:
+    dest: /var/lib/buildkite-agent/.ssh/id_rsa
+    content: "{{ buildkite_ssh_key | b64decode }}"
+    mode: "0600"

@@ -1,0 +1,913 @@
+apiVersion: v1
+items:
+- apiVersion: rbac.authorization.k8s.io/v1
+  kind: ClusterRole
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"rbac.authorization.k8s.io/v1","kind":"ClusterRole","metadata":{"annotations":{},"name":"kubiya-cluster-role"},"rules":[{"apiGroups":[""],"resources":["persistentvolumes"],"verbs":["create","get","list","watch","update","patch","delete"]}]}
+    creationTimestamp: "2024-09-05T16:14:38Z"
+    name: kubiya-cluster-role
+    resourceVersion: "6287664"
+    uid: 91c8a222-ccf5-46f4-bf0a-9c710d770120
+  rules:
+  - apiGroups:
+    - ""
+    resources:
+    - persistentvolumes
+    verbs:
+    - create
+    - get
+    - list
+    - watch
+    - update
+    - patch
+    - delete
+- apiVersion: rbac.authorization.k8s.io/v1
+  kind: ClusterRoleBinding
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"rbac.authorization.k8s.io/v1","kind":"ClusterRoleBinding","metadata":{"annotations":{},"name":"kubiya-cluster-role-binding"},"roleRef":{"apiGroup":"rbac.authorization.k8s.io","kind":"ClusterRole","name":"kubiya-cluster-role"},"subjects":[{"kind":"ServiceAccount","name":"kubiya-service-account","namespace":"kubiya"}]}
+    creationTimestamp: "2024-09-05T16:14:38Z"
+    name: kubiya-cluster-role-binding
+    resourceVersion: "6287667"
+    uid: b2b9117b-640f-4280-bc1b-135139ac3070
+  roleRef:
+    apiGroup: rbac.authorization.k8s.io
+    kind: ClusterRole
+    name: kubiya-cluster-role
+  subjects:
+  - kind: ServiceAccount
+    name: kubiya-service-account
+    namespace: kubiya
+- apiVersion: v1
+  kind: Namespace
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"v1","kind":"Namespace","metadata":{"annotations":{},"name":"kubiya"}}
+    creationTimestamp: "2024-09-17T22:16:43Z"
+    labels:
+      kubernetes.io/metadata.name: kubiya
+    name: kubiya
+    resourceVersion: "27616362"
+    uid: 0d8cefcc-8e0d-48d0-8247-935dff8e03f8
+  spec:
+    finalizers:
+    - kubernetes
+  status:
+    phase: Active
+- apiVersion: v1
+  data:
+    nats.creds: LS0tLS1CRUdJTiBOQVRTIFVTRVIgSldULS0tLS0KZXlKMGVYQWlPaUpLVjFRaUxDSmhiR2NpT2lKbFpESTFOVEU1TFc1clpYa2lmUS5leUpxZEdraU9pSlNRMHBUV0U1TVZGbGFUalpCVHpOT1drZFVVVkphTjFRMVNVODJWVkEwV0ZGWFIxZFlTVVJXUkUwME5WTkhSRlUyTjA1Uklpd2lhV0YwSWpveE56STJOakV4TXpnekxDSnBjM01pT2lKQlExUkJVVm8yVFZkU1YwdE9SRWxLUlVaTFRFSkpSakpNUkZCVlJrdFdTMU5PTlVkTVUwdEhVa1l6TjFKSU1rVlVWVmxOVTAxQ1ZDSXNJbTVoYldVaU9pSndjbVYyYVdWM2NHRmtMblpqYkhWemRHVnlMVzlzWldjaUxDSnpkV0lpT2lKVlFsVkNRMUZVU1U0M1R6SlFVa1pRVXpaV1ZVaEJOMVpEUVZNelRsVk9ORU5UUlVGVVRsRlNVMU5JTTBWQ01rVlpOVWd5UnpKQk55SXNJbTVoZEhNaU9uc2ljSFZpSWpwN2ZTd2ljM1ZpSWpwN2ZTd2lhWE56ZFdWeVgyRmpZMjkxYm5RaU9pSkJRVmhQVUZRMVRVZEtTMVJMTmpaUU4wMVhNbEpTU1V4UldFaEROa1JhUzFSVVR6WklWMFJZVDB0S1VVNUZTVWxKVDAxVldqUkNVeUlzSW5SNWNHVWlPaUoxYzJWeUlpd2lkbVZ5YzJsdmJpSTZNbjE5LmRHZm5BMFotNDU1eXhXVVJEY2w0aFlkb1lZUzZzVWstYUJCOTlNemZNM2VIUEE4S1Jac2RKWkxCSzZuYlN2dVdtb2pQbkZDTU5XcEMxWkdpYllpMEFRCi0tLS0tLUVORCBOQVRTIFVTRVIgSldULS0tLS0tCgoqKioqKioqKioqKioqKioqKioqKioqKioqIElNUE9SVEFOVCAqKioqKioqKioqKioqKioqKioqKioqKioqCk5LRVkgU2VlZCBwcmludGVkIGJlbG93IGNhbiBiZSB1c2VkIHRvIHNpZ24gYW5kIHByb3ZlIGlkZW50aXR5LgpOS0VZcyBhcmUgc2Vuc2l0aXZlIGFuZCBzaG91bGQgYmUgdHJlYXRlZCBhcyBzZWNyZXRzLgoKLS0tLS1CRUdJTiBVU0VSIE5LRVkgU0VFRC0tLS0tClNVQUNYRDVZUVNMRFNVUk5KRVVQUURNWDdIVFJLSVNWNVVGVU1FSzQ3TTNSNVBKT0dLMzJaN1FSV1kKLS0tLS0tRU5EIFVTRVIgTktFWSBTRUVELS0tLS0tCgoqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqCg==
+  kind: Secret
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"v1","data":{"nats.creds":"LS0tLS1CRUdJTiBOQVRTIFVTRVIgSldULS0tLS0KZXlKMGVYQWlPaUpLVjFRaUxDSmhiR2NpT2lKbFpESTFOVEU1TFc1clpYa2lmUS5leUpxZEdraU9pSlNRMHBUV0U1TVZGbGFUalpCVHpOT1drZFVVVkphTjFRMVNVODJWVkEwV0ZGWFIxZFlTVVJXUkUwME5WTkhSRlUyTjA1Uklpd2lhV0YwSWpveE56STJOakV4TXpnekxDSnBjM01pT2lKQlExUkJVVm8yVFZkU1YwdE9SRWxLUlVaTFRFSkpSakpNUkZCVlJrdFdTMU5PTlVkTVUwdEhVa1l6TjFKSU1rVlVWVmxOVTAxQ1ZDSXNJbTVoYldVaU9pSndjbVYyYVdWM2NHRmtMblpqYkhWemRHVnlMVzlzWldjaUxDSnpkV0lpT2lKVlFsVkNRMUZVU1U0M1R6SlFVa1pRVXpaV1ZVaEJOMVpEUVZNelRsVk9ORU5UUlVGVVRsRlNVMU5JTTBWQ01rVlpOVWd5UnpKQk55SXNJbTVoZEhNaU9uc2ljSFZpSWpwN2ZTd2ljM1ZpSWpwN2ZTd2lhWE56ZFdWeVgyRmpZMjkxYm5RaU9pSkJRVmhQVUZRMVRVZEtTMVJMTmpaUU4wMVhNbEpTU1V4UldFaEROa1JhUzFSVVR6WklWMFJZVDB0S1VVNUZTVWxKVDAxVldqUkNVeUlzSW5SNWNHVWlPaUoxYzJWeUlpd2lkbVZ5YzJsdmJpSTZNbjE5LmRHZm5BMFotNDU1eXhXVVJEY2w0aFlkb1lZUzZzVWstYUJCOTlNemZNM2VIUEE4S1Jac2RKWkxCSzZuYlN2dVdtb2pQbkZDTU5XcEMxWkdpYllpMEFRCi0tLS0tLUVORCBOQVRTIFVTRVIgSldULS0tLS0tCgoqKioqKioqKioqKioqKioqKioqKioqKioqIElNUE9SVEFOVCAqKioqKioqKioqKioqKioqKioqKioqKioqCk5LRVkgU2VlZCBwcmludGVkIGJlbG93IGNhbiBiZSB1c2VkIHRvIHNpZ24gYW5kIHByb3ZlIGlkZW50aXR5LgpOS0VZcyBhcmUgc2Vuc2l0aXZlIGFuZCBzaG91bGQgYmUgdHJlYXRlZCBhcyBzZWNyZXRzLgoKLS0tLS1CRUdJTiBVU0VSIE5LRVkgU0VFRC0tLS0tClNVQUNYRDVZUVNMRFNVUk5KRVVQUURNWDdIVFJLSVNWNVVGVU1FSzQ3TTNSNVBKT0dLMzJaN1FSV1kKLS0tLS0tRU5EIFVTRVIgTktFWSBTRUVELS0tLS0tCgoqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqCg=="},"kind":"Secret","metadata":{"annotations":{},"name":"nats-creds-runner","namespace":"kubiya"},"type":"Opaque"}
+    creationTimestamp: "2024-09-17T22:16:44Z"
+    name: nats-creds-runner
+    namespace: kubiya
+    resourceVersion: "27616371"
+    uid: 82c3d885-90d3-4b32-89d0-6923a075c5a3
+  type: Opaque
+- apiVersion: v1
+  data:
+    nats.creds: LS0tLS1CRUdJTiBOQVRTIFVTRVIgSldULS0tLS0KZXlKMGVYQWlPaUpLVjFRaUxDSmhiR2NpT2lKbFpESTFOVEU1TFc1clpYa2lmUS5leUpxZEdraU9pSlZXa3hKTkU1Sk5FeEZWbGhVVWtSQ1QxQk5UamRKVFV0UU5sWkRTbEpKVnpKVVRFaEdWVXhZVkVkUFNGUlJWa3hUTkRWUklpd2lhV0YwSWpveE56RTVOVEEzTkRjNExDSnBjM01pT2lKQlJFMDJOMUphVmxwUk5FaFBVMGhPTWxORVNsQlVRbFpZTTAwM1dWaEpUVE15TkRkS1JVeFZVRFJRVHpWT1dVbEpORmRLUjB0VVZpSXNJbTVoYldVaU9pSndjbVYyYVdWM2NHRmtJaXdpYzNWaUlqb2lWVU5ZU1ZoUlUwUk1XRXMwUTBSVFJWSTNRbGxMVkU1Q1JsVXlXRGRCTmtWWlZESlZNMWhZVmxWT1RqSk9XbGxNTmpaVlRWQTJSMFlpTENKdVlYUnpJanA3SW5CMVlpSTZlMzBzSW5OMVlpSTZlMzBzSW1semMzVmxjbDloWTJOdmRXNTBJam9pUVVGWVQxQlVOVTFIU2t0VVN6WTJVRGROVnpKU1VrbE1VVmhJUXpaRVdrdFVWRTgyU0ZkRVdFOUxTbEZPUlVsSlNVOU5WVm8wUWxNaUxDSjBlWEJsSWpvaWRYTmxjaUlzSW5abGNuTnBiMjRpT2pKOWZRLm5PYjZ2b3llVTlaM3kzeXdrSHRvenoxaE1qZGx6T0hIUHRSUjk0Z3ZxTnNDTFNkNndSLWcxUHh1UEFHV2pLVFdjNzd6SEpEZ2NuUktxUFhrR3BBYkNBCi0tLS0tLUVORCBOQVRTIFVTRVIgSldULS0tLS0tCgoqKioqKioqKioqKioqKioqKioqKioqKioqIElNUE9SVEFOVCAqKioqKioqKioqKioqKioqKioqKioqKioqCk5LRVkgU2VlZCBwcmludGVkIGJlbG93IGNhbiBiZSB1c2VkIHRvIHNpZ24gYW5kIHByb3ZlIGlkZW50aXR5LgpOS0VZcyBhcmUgc2Vuc2l0aXZlIGFuZCBzaG91bGQgYmUgdHJlYXRlZCBhcyBzZWNyZXRzLgoKLS0tLS1CRUdJTiBVU0VSIE5LRVkgU0VFRC0tLS0tClNVQUtPTVNITVFNT0JRV1NaM1BHVERTR0pJUE4zSjZONFg1RlVQQ1E1T09GVFFRU1hBT0JWNEFETkUKLS0tLS0tRU5EIFVTRVIgTktFWSBTRUVELS0tLS0tCgoqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqCg==
+  kind: Secret
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"v1","data":{"nats.creds":"LS0tLS1CRUdJTiBOQVRTIFVTRVIgSldULS0tLS0KZXlKMGVYQWlPaUpLVjFRaUxDSmhiR2NpT2lKbFpESTFOVEU1TFc1clpYa2lmUS5leUpxZEdraU9pSlZXa3hKTkU1Sk5FeEZWbGhVVWtSQ1QxQk5UamRKVFV0UU5sWkRTbEpKVnpKVVRFaEdWVXhZVkVkUFNGUlJWa3hUTkRWUklpd2lhV0YwSWpveE56RTVOVEEzTkRjNExDSnBjM01pT2lKQlJFMDJOMUphVmxwUk5FaFBVMGhPTWxORVNsQlVRbFpZTTAwM1dWaEpUVE15TkRkS1JVeFZVRFJRVHpWT1dVbEpORmRLUjB0VVZpSXNJbTVoYldVaU9pSndjbVYyYVdWM2NHRmtJaXdpYzNWaUlqb2lWVU5ZU1ZoUlUwUk1XRXMwUTBSVFJWSTNRbGxMVkU1Q1JsVXlXRGRCTmtWWlZESlZNMWhZVmxWT1RqSk9XbGxNTmpaVlRWQTJSMFlpTENKdVlYUnpJanA3SW5CMVlpSTZlMzBzSW5OMVlpSTZlMzBzSW1semMzVmxjbDloWTJOdmRXNTBJam9pUVVGWVQxQlVOVTFIU2t0VVN6WTJVRGROVnpKU1VrbE1VVmhJUXpaRVdrdFVWRTgyU0ZkRVdFOUxTbEZPUlVsSlNVOU5WVm8wUWxNaUxDSjBlWEJsSWpvaWRYTmxjaUlzSW5abGNuTnBiMjRpT2pKOWZRLm5PYjZ2b3llVTlaM3kzeXdrSHRvenoxaE1qZGx6T0hIUHRSUjk0Z3ZxTnNDTFNkNndSLWcxUHh1UEFHV2pLVFdjNzd6SEpEZ2NuUktxUFhrR3BBYkNBCi0tLS0tLUVORCBOQVRTIFVTRVIgSldULS0tLS0tCgoqKioqKioqKioqKioqKioqKioqKioqKioqIElNUE9SVEFOVCAqKioqKioqKioqKioqKioqKioqKioqKioqCk5LRVkgU2VlZCBwcmludGVkIGJlbG93IGNhbiBiZSB1c2VkIHRvIHNpZ24gYW5kIHByb3ZlIGlkZW50aXR5LgpOS0VZcyBhcmUgc2Vuc2l0aXZlIGFuZCBzaG91bGQgYmUgdHJlYXRlZCBhcyBzZWNyZXRzLgoKLS0tLS1CRUdJTiBVU0VSIE5LRVkgU0VFRC0tLS0tClNVQUtPTVNITVFNT0JRV1NaM1BHVERTR0pJUE4zSjZONFg1RlVQQ1E1T09GVFFRU1hBT0JWNEFETkUKLS0tLS0tRU5EIFVTRVIgTktFWSBTRUVELS0tLS0tCgoqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqCg=="},"kind":"Secret","metadata":{"annotations":{},"name":"nats-creds-customer","namespace":"kubiya"},"type":"Opaque"}
+    creationTimestamp: "2024-09-17T22:16:45Z"
+    name: nats-creds-customer
+    namespace: kubiya
+    resourceVersion: "27616400"
+    uid: 13c86d48-9117-47c3-8bf4-ecbd7c92784a
+  type: Opaque
+- apiVersion: v1
+  data:
+    tls.crt: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURLVENDQWhHZ0F3SUJBZ0lVWUsyeWR4cFZGSXFlL3ArQjJkVURtcCtHK0Fzd0RRWUpLb1pJaHZjTkFRRUwKQlFBd0pERWlNQ0FHQTFVRUF3d1pZMkZqYUdVdGNtVm5hWE4wY25rdGMzWmpMbXQxWW1sNVlUQWVGdzB5TkRFdwpNREl4TWpJd05EZGFGdzB5TlRFd01ESXhNakl3TkRkYU1DUXhJakFnQmdOVkJBTU1HV05oWTJobExYSmxaMmx6CmRISjVMWE4yWXk1cmRXSnBlV0V3Z2dFaU1BMEdDU3FHU0liM0RRRUJBUVVBQTRJQkR3QXdnZ0VLQW9JQkFRRHkKZ2N2ZEJaWDU0SUc5ZWtmOUNvQVNRQnpvTHFvWE4vb2psUUlKS0JZYzJkdnZJZjU0MVoxb0RRSnlyalUzMlliNQpCV2FQWGs5L2xsVnVUMEJuZmhIRmFCQzVPY0w2MmVPOFdWNnBDT0hpTXpJRVF5YkNPWGRwb2c0QzB1d3dXVlRJCnF1ZmwwUDkxTUNqVCtIcFJBSk5HNjBDZGt3UHF5UEwxQldGQWRtV0ZDdWdwWTVJQ1JFQnFETWJZTkxPcndGNzgKVnlxdEVHYjJuVGhzZjQ5YUVXN1Q4c0hqREFYVXQ5WmVRVFRScy9ML09MQlMvNFl0bTVaUlRMdDdUZGdEYnRvYwp4L2ovaU1DSkg5Zk9VeGFpaC95UklWVE9SeVh4YVFvKzZFMGgyUXZ1S081elBNWThEM3dlSlJUbUpBOWE4bHFSCmJLeXFZL3ozMi95b09JaThLT0dyQWdNQkFBR2pVekJSTUIwR0ExVWREZ1FXQkJURUt4bVhNUUJpZ2VxVHRiQjUKTzdBZzZYeDlDekFmQmdOVkhTTUVHREFXZ0JURUt4bVhNUUJpZ2VxVHRiQjVPN0FnNlh4OUN6QVBCZ05WSFJNQgpBZjhFQlRBREFRSC9NQTBHQ1NxR1NJYjNEUUVCQ3dVQUE0SUJBUUN3dFllbEg3N01JMFVQbHZVV0RYYmdtYVR3CjZOZzEzVytrUUx3alZvUDdySGNha1d3eWkwdllsNU82dUtFbjJHaHI2OTVwaXYxQjRjbjVkalhpSzBZOFdnZjMKSEk3YkNrTGE0M0JPZGZzbWNKUk01dnhKSUlWTExWaWc3NFpYUFB5K3RYTXpUR0VqbWtBOGZNVnlTOTVHMGNTbQpvemY1OExWdjc2OTNKWlpaOXhtUzFlajNmeVA2WlpCYlhVdG1FNHVucmliLzBWTmhTdThDMXJYcUFvU2hBRm9wCktVai9CaWxqZ3l4Kzdxb3ByRDEzVndPdTU3S3J3aWpPcmFtays2d2prSUpVVFVGNFFRODdhRE5Ub1lrRzFOZ1IKeEliUDhUNnlHU0dCMjVZZTRYZ3RJc1l0bDUwemxlZ3JiU0lpZVEyMFcxQlVydW1HYzNTcnNiZStiNXFxCi0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K
+    tls.key: LS0tLS1CRUdJTiBQUklWQVRFIEtFWS0tLS0tCk1JSUV2UUlCQURBTkJna3Foa2lHOXcwQkFRRUZBQVNDQktjd2dnU2pBZ0VBQW9JQkFRRHlnY3ZkQlpYNTRJRzkKZWtmOUNvQVNRQnpvTHFvWE4vb2psUUlKS0JZYzJkdnZJZjU0MVoxb0RRSnlyalUzMlliNUJXYVBYazkvbGxWdQpUMEJuZmhIRmFCQzVPY0w2MmVPOFdWNnBDT0hpTXpJRVF5YkNPWGRwb2c0QzB1d3dXVlRJcXVmbDBQOTFNQ2pUCitIcFJBSk5HNjBDZGt3UHF5UEwxQldGQWRtV0ZDdWdwWTVJQ1JFQnFETWJZTkxPcndGNzhWeXF0RUdiMm5UaHMKZjQ5YUVXN1Q4c0hqREFYVXQ5WmVRVFRScy9ML09MQlMvNFl0bTVaUlRMdDdUZGdEYnRvY3gvai9pTUNKSDlmTwpVeGFpaC95UklWVE9SeVh4YVFvKzZFMGgyUXZ1S081elBNWThEM3dlSlJUbUpBOWE4bHFSYkt5cVkvejMyL3lvCk9JaThLT0dyQWdNQkFBRUNnZ0VBSndrb1VtRHp6ZnFLNTlVbkxBbVBWQXRvbTh5UjFKV2plTmJPTW1zaGVXNFkKTGx0cWV2T1NiWTFWTjRzOThIVGVKU0pFRldVNC9CdFc1U0Fjc3phMzVabVFGNVlVckxjbUpzdG1wcm1uVFV5dwpZR251eUpUaUxwUWN3cGViMkFIZWcrNnBlc28wVk1qTHlhaUFYVW1hYTNBSVFWVWVRYUlzZWE4WldIeGhHeE8yCktUL3BQSGFKek8rU1JoeTVuMkRQcmVYazlmelFSR2ZjWER3cGQ3WXZ2VndKd0lITnVVR0hTVU9UMCtkT2ZsV04KU3NYRXN0dEdMOW9zUzBVcUh0V2J3R3J1dmZGeE1Kb2ZoSVhka0tTS3BVbW9KbDhrcGoxazY5R1EzMGs1b0xvRgpTME1ZZnUyUVVLdTJnbWRDM2JMNENEU0t1bGo5anZqa1A2MW12R1pQQVFLQmdRRDZaWWJHMklXSVpHZnc2Skc4CnVBSFFBeTdyZzU1OFNHN1c2YTU0L0U1dHp4cWltWXBORWEwQWVWQ05jSUxVdzdsemluMmUzYVNYYkRqSkNSZ0QKcEcvSUZZbjJWd0FmNWJzcjJGaC92U0NtZUtkUmtKeS9Pc1dLbjZadVRXczV3NjlSMzI4REhZbmFqdnFpaGh3QwoxNXVITExXRXpZV25MaERrYWdvc2NzTVR6UUtCZ1FEMzd4SnhzSndqNElmZExPRFY2Z3NTSEZySU1TclhQTHo4CnVGSWRJYmV4VmxxcTQ4SVdsYUg5UEd6NG13aHJ2KzI5OEs4VjB6TjUxZzVZandsT2N6RnJEaEdqY2l2YURZRkYKZlh2MllkdXNUK1ViczRYbEtMMmhUcnBRa3BEdjgyR216WlQ3d2ZkcHNPbVBpb2xZUENUYnl5dzJnN3dhMWpEZgplaEJ2K3VqRFZ3S0JnQ1hpenEydmZTVFI3RmdyR0VIeHBYU1B4cjJqd0lzVmVvL1I4N0Fpbk10SWxzTWJjQzJSCkN4Z1RRdmpqbVNnUUpUTXlOU2VnYVpMdnNQZmFCR1Fvc1RFWThUTHdudmcwamtsb0JwdnRSYzlxV2dhaFZ0WW8KVWxOVExKOXIzMWx5SGtqSkFjYjY1U3pJald1aDF3TW5GRVV6b3BOaGRXT0NPTlFXcDB0cVlkSFJBb0dCQU8zTApqY3dmRU5MVVFsc2U5UklXWk1IZEVqRVovelhyR25QbE1WU2hoelorVlgyNzd1YU1ZNDZueXZoeWNaUXV4QTQ5Cjd4K21ycU4zYTlFQ2QzR1h5RmtlYUVwMGNaeTFBVHl1Q3h3WFpZTVNLZkwwcjBKSVhnQjlxdk1tYi83RVZ1K08KRkF1WFVQNDg0UFo4Y0JpQnJ2UmtIS2E0bU16QWpLVjZ4Sk15ZXRjSEFvR0FSayszcmNJdCtsbkhVUVV0S0FIRgoxaXg4WjJRN210cGJJUnd6SnpVQlIrWWdRVENqNWRHNlVjL3M2QXpBSzNNZnFhVHRsU3BHWkdJUDJDcXpjODU4CjlKcjhoVGNwMGRMaHpuZ04xeE1zMzdIbzVTMXVWUWxWbit5d0tqem5SQzF3TWhZYTNZTTJVbDF3R3p3QjRKWUoKbk41VmJmUStPYnVKODAvVERpcmRQU2s9Ci0tLS0tRU5EIFBSSVZBVEUgS0VZLS0tLS0K
+  kind: Secret
+  metadata:
+    creationTimestamp: "2024-10-02T12:20:58Z"
+    name: registry-tls-secret
+    namespace: kubiya
+    resourceVersion: "52332045"
+    uid: 196d59fb-6b1f-4417-a02a-630d5069c80c
+  type: kubernetes.io/tls
+- apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    annotations:
+      deployment.kubernetes.io/revision: "1"
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"apps/v1","kind":"Deployment","metadata":{"annotations":{},"name":"kubiya-operator","namespace":"kubiya"},"spec":{"replicas":1,"selector":{"matchLabels":{"app":"kubiya-operator"}},"template":{"metadata":{"labels":{"app":"kubiya-operator"}},"spec":{"containers":[{"env":[{"name":"NATS_SERVER","value":"tls://connect.ngs.global"},{"name":"NATS_SUBJECT","value":"previewpad.vcluster-oleg.incoming"},{"name":"NATS_CREDENTIAL_FILE","value":"/etc/nats/nats.creds"},{"name":"NAMESPACE","value":"kubiya"}],"image":"ghcr.io/kubiyabot/kubiya-operator:runner_v2","imagePullPolicy":"Always","name":"kubiya-operator","ports":[{"containerPort":80}],"volumeMounts":[{"mountPath":"/etc/nats","name":"nats-creds-volume","readOnly":true}]}],"serviceAccountName":"kubiya-service-account","volumes":[{"name":"nats-creds-volume","secret":{"items":[{"key":"nats.creds","path":"nats.creds"}],"secretName":"nats-creds-runner"}}]}}}}
+    creationTimestamp: "2024-09-17T22:16:47Z"
+    generation: 1
+    name: kubiya-operator
+    namespace: kubiya
+    resourceVersion: "54875082"
+    uid: ea79cb96-6fb7-4568-8e8e-6e15d634233b
+  spec:
+    progressDeadlineSeconds: 600
+    replicas: 1
+    revisionHistoryLimit: 10
+    selector:
+      matchLabels:
+        app: kubiya-operator
+    strategy:
+      rollingUpdate:
+        maxSurge: 25%
+        maxUnavailable: 25%
+      type: RollingUpdate
+    template:
+      metadata:
+        creationTimestamp: null
+        labels:
+          app: kubiya-operator
+      spec:
+        containers:
+        - env:
+          - name: NATS_SERVER
+            value: tls://connect.ngs.global
+          - name: NATS_SUBJECT
+            value: previewpad.vcluster-oleg.incoming
+          - name: NATS_CREDENTIAL_FILE
+            value: /etc/nats/nats.creds
+          - name: NAMESPACE
+            value: kubiya
+          image: ghcr.io/kubiyabot/kubiya-operator:runner_v2
+          imagePullPolicy: Always
+          name: kubiya-operator
+          ports:
+          - containerPort: 80
+            protocol: TCP
+          resources: {}
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          volumeMounts:
+          - mountPath: /etc/nats
+            name: nats-creds-volume
+            readOnly: true
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        serviceAccount: kubiya-service-account
+        serviceAccountName: kubiya-service-account
+        terminationGracePeriodSeconds: 30
+        volumes:
+        - name: nats-creds-volume
+          secret:
+            defaultMode: 420
+            items:
+            - key: nats.creds
+              path: nats.creds
+            secretName: nats-creds-runner
+  status:
+    availableReplicas: 1
+    conditions:
+    - lastTransitionTime: "2024-09-17T22:16:47Z"
+      lastUpdateTime: "2024-09-17T22:16:53Z"
+      message: ReplicaSet "kubiya-operator-8589dcbc57" has successfully progressed.
+      reason: NewReplicaSetAvailable
+      status: "True"
+      type: Progressing
+    - lastTransitionTime: "2024-10-04T00:08:22Z"
+      lastUpdateTime: "2024-10-04T00:08:22Z"
+      message: Deployment has minimum availability.
+      reason: MinimumReplicasAvailable
+      status: "True"
+      type: Available
+    observedGeneration: 1
+    readyReplicas: 1
+    replicas: 1
+    updatedReplicas: 1
+- apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    annotations:
+      deployment.kubernetes.io/revision: "1"
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"apps/v1","kind":"Deployment","metadata":{"annotations":{},"name":"pulse-sender","namespace":"kubiya"},"spec":{"replicas":1,"selector":{"matchLabels":{"app":"pulse-sender"}},"template":{"metadata":{"labels":{"app":"pulse-sender"}},"spec":{"containers":[{"command":["/app","--pulse"],"env":[{"name":"NATS_SERVER","value":"tls://connect.ngs.global"},{"name":"NATS_SUBJECT","value":"pulse.previewpad.vcluster-oleg.v2"},{"name":"NATS_CREDENTIAL_FILE","value":"/etc/nats/nats.creds"},{"name":"NAMESPACE","value":"kubiya"}],"image":"ghcr.io/kubiyabot/kubiya-operator:runner_v2","imagePullPolicy":"Always","name":"pulse-sender","ports":[{"containerPort":80}],"volumeMounts":[{"mountPath":"/etc/nats","name":"nats-creds-volume","readOnly":true}]}],"serviceAccountName":"kubiya-service-account","volumes":[{"name":"nats-creds-volume","secret":{"items":[{"key":"nats.creds","path":"nats.creds"}],"secretName":"nats-creds-runner"}}]}}}}
+    creationTimestamp: "2024-09-17T22:16:48Z"
+    generation: 1
+    name: pulse-sender
+    namespace: kubiya
+    resourceVersion: "27633174"
+    uid: b829b0f3-7b54-4b6c-8815-c130cdbc6564
+  spec:
+    progressDeadlineSeconds: 600
+    replicas: 1
+    revisionHistoryLimit: 10
+    selector:
+      matchLabels:
+        app: pulse-sender
+    strategy:
+      rollingUpdate:
+        maxSurge: 25%
+        maxUnavailable: 25%
+      type: RollingUpdate
+    template:
+      metadata:
+        creationTimestamp: null
+        labels:
+          app: pulse-sender
+      spec:
+        containers:
+        - command:
+          - /app
+          - --pulse
+          env:
+          - name: NATS_SERVER
+            value: tls://connect.ngs.global
+          - name: NATS_SUBJECT
+            value: pulse.previewpad.vcluster-oleg.v2
+          - name: NATS_CREDENTIAL_FILE
+            value: /etc/nats/nats.creds
+          - name: NAMESPACE
+            value: kubiya
+          image: ghcr.io/kubiyabot/kubiya-operator:runner_v2
+          imagePullPolicy: Always
+          name: pulse-sender
+          ports:
+          - containerPort: 80
+            protocol: TCP
+          resources: {}
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          volumeMounts:
+          - mountPath: /etc/nats
+            name: nats-creds-volume
+            readOnly: true
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        serviceAccount: kubiya-service-account
+        serviceAccountName: kubiya-service-account
+        terminationGracePeriodSeconds: 30
+        volumes:
+        - name: nats-creds-volume
+          secret:
+            defaultMode: 420
+            items:
+            - key: nats.creds
+              path: nats.creds
+            secretName: nats-creds-runner
+  status:
+    availableReplicas: 1
+    conditions:
+    - lastTransitionTime: "2024-09-17T22:16:48Z"
+      lastUpdateTime: "2024-09-17T22:16:54Z"
+      message: ReplicaSet "pulse-sender-78bf5b56dd" has successfully progressed.
+      reason: NewReplicaSetAvailable
+      status: "True"
+      type: Progressing
+    - lastTransitionTime: "2024-09-17T22:29:00Z"
+      lastUpdateTime: "2024-09-17T22:29:00Z"
+      message: Deployment has minimum availability.
+      reason: MinimumReplicasAvailable
+      status: "True"
+      type: Available
+    observedGeneration: 1
+    readyReplicas: 1
+    replicas: 1
+    updatedReplicas: 1
+- apiVersion: v1
+  kind: ServiceAccount
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"v1","kind":"ServiceAccount","metadata":{"annotations":{},"name":"kubiya-service-account","namespace":"kubiya"}}
+    creationTimestamp: "2024-09-17T22:16:49Z"
+    name: kubiya-service-account
+    namespace: kubiya
+    resourceVersion: "27616510"
+    uid: 20923179-de9f-4208-8843-50a653929b36
+- apiVersion: rbac.authorization.k8s.io/v1
+  kind: Role
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"rbac.authorization.k8s.io/v1","kind":"Role","metadata":{"annotations":{},"name":"kubiya-role","namespace":"kubiya"},"rules":[{"apiGroups":["*"],"resources":["*"],"verbs":["*"]}]}
+    creationTimestamp: "2024-09-17T22:16:50Z"
+    name: kubiya-role
+    namespace: kubiya
+    resourceVersion: "27616555"
+    uid: 66d2ccf6-c735-4349-a6ce-1fed6138984f
+  rules:
+  - apiGroups:
+    - '*'
+    resources:
+    - '*'
+    verbs:
+    - '*'
+- apiVersion: rbac.authorization.k8s.io/v1
+  kind: RoleBinding
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"rbac.authorization.k8s.io/v1","kind":"RoleBinding","metadata":{"annotations":{},"name":"kubiya-role-binding","namespace":"kubiya"},"roleRef":{"apiGroup":"rbac.authorization.k8s.io","kind":"Role","name":"kubiya-role"},"subjects":[{"kind":"ServiceAccount","name":"kubiya-service-account","namespace":"kubiya"}]}
+    creationTimestamp: "2024-09-17T22:16:51Z"
+    name: kubiya-role-binding
+    namespace: kubiya
+    resourceVersion: "27616572"
+    uid: 66db39f2-7ab7-49e9-b7ee-94518c6c50e7
+  roleRef:
+    apiGroup: rbac.authorization.k8s.io
+    kind: Role
+    name: kubiya-role
+  subjects:
+  - kind: ServiceAccount
+    name: kubiya-service-account
+    namespace: kubiya
+- apiVersion: v1
+  kind: Namespace
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"v1","kind":"Namespace","metadata":{"annotations":{},"labels":{"kubernetes.io/metadata.name":"dagger","name":"dagger"},"name":"dagger"}}
+    creationTimestamp: "2024-09-04T21:45:59Z"
+    labels:
+      kubernetes.io/metadata.name: dagger
+      name: dagger
+    name: dagger
+    resourceVersion: "5089189"
+    uid: 386666a8-db26-47fb-afd5-fa6a9721290f
+  spec:
+    finalizers:
+    - kubernetes
+  status:
+    phase: Active
+- apiVersion: v1
+  data:
+    engine.toml: |
+      debug = true
+      [registry."ghcr.io"]
+        http = true
+      [registry."ttl.sh"]
+        http = true
+      [registry."docker.io"]
+        http = true
+      [log]
+        format = "json"
+  kind: ConfigMap
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"v1","data":{"engine.toml":"debug = true\ninsecure-entitlements = [\"security.insecure\"]\n[registry.\"registry:5000\"]\n  http = true\n[registry.\"docker.io\"]\n  mirrors = [\"mirror.gcr.io\"]\n[log]\n  format = \"json\"\n"},"kind":"ConfigMap","metadata":{"annotations":{},"labels":{"app.kubernetes.io/instance":"dagger","app.kubernetes.io/managed-by":"Helm","app.kubernetes.io/name":"dagger-helm","app.kubernetes.io/part-of":"dagger-helm","app.kubernetes.io/version":"v0.13.3","helm.sh/chart":"dagger-helm-0.13.3"},"name":"dagger-dagger-helm-engine-config","namespace":"dagger"}}
+    creationTimestamp: "2024-10-02T08:23:50Z"
+    labels:
+      app.kubernetes.io/instance: dagger
+      app.kubernetes.io/managed-by: Helm
+      app.kubernetes.io/name: dagger-helm
+      app.kubernetes.io/part-of: dagger-helm
+      app.kubernetes.io/version: v0.13.3
+      helm.sh/chart: dagger-helm-0.13.3
+    name: dagger-dagger-helm-engine-config
+    namespace: dagger
+    resourceVersion: "62694792"
+    uid: af57aa06-7e5d-4b36-84da-b7e8d101535c
+- apiVersion: apps/v1
+  kind: DaemonSet
+  metadata:
+    annotations:
+      deprecated.daemonset.template.generation: "7"
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"apps/v1","kind":"DaemonSet","metadata":{"annotations":{},"labels":{"app.kubernetes.io/instance":"dagger","app.kubernetes.io/managed-by":"Helm","app.kubernetes.io/name":"dagger-helm","app.kubernetes.io/part-of":"dagger-helm","app.kubernetes.io/version":"v0.13.3","helm.sh/chart":"dagger-helm-0.13.3"},"name":"dagger-dagger-helm-engine","namespace":"dagger"},"spec":{"selector":{"matchLabels":{"name":"dagger-dagger-helm-engine"}},"template":{"metadata":{"annotations":{"checksum/config":"a07dcb45c3e43598f5c6d1fd63ac258b70166868a3bd2374e7ff8238db0aa966"},"labels":{"app.kubernetes.io/instance":"dagger","app.kubernetes.io/managed-by":"Helm","app.kubernetes.io/name":"dagger-helm","app.kubernetes.io/part-of":"dagger-helm","app.kubernetes.io/version":"v0.13.3","helm.sh/chart":"dagger-helm-0.13.3","name":"dagger-dagger-helm-engine"}},"spec":{"containers":[{"image":"registry.dagger.io/engine:v0.11.6","imagePullPolicy":"IfNotPresent","name":"dagger-engine","readinessProbe":{"exec":{"command":["buildctl","debug","workers"]},"failureThreshold":10,"initialDelaySeconds":5,"periodSeconds":15,"successThreshold":1,"timeoutSeconds":14},"resources":{"limits":{},"requests":{}},"securityContext":{"capabilities":{"add":["ALL"]},"privileged":true},"volumeMounts":[{"mountPath":"/var/lib/dagger","name":"varlibdagger"},{"mountPath":"/var/run/buildkit","name":"varrundagger"},{"mountPath":"/etc/dagger/engine.toml","name":"dagger-engine-config","subPath":"engine.toml"}]}],"securityContext":{"fsGroup":1001,"fsGroupChangePolicy":"OnRootMismatch","runAsGroup":1001,"runAsUser":0},"serviceAccountName":"default","terminationGracePeriodSeconds":300,"volumes":[{"hostPath":{"path":"/var/lib/dagger"},"name":"varlibdagger"},{"hostPath":{"path":"/var/run/dagger"},"name":"varrundagger"},{"configMap":{"items":[{"key":"engine.toml","path":"engine.toml"}],"name":"dagger-dagger-helm-engine-config"},"name":"dagger-engine-config"}]}}}}
+    creationTimestamp: "2024-09-05T16:07:21Z"
+    generation: 7
+    labels:
+      app.kubernetes.io/instance: dagger
+      app.kubernetes.io/managed-by: Helm
+      app.kubernetes.io/name: dagger-helm
+      app.kubernetes.io/part-of: dagger-helm
+      app.kubernetes.io/version: v0.13.3
+      helm.sh/chart: dagger-helm-0.13.3
+    name: dagger-dagger-helm-engine
+    namespace: dagger
+    resourceVersion: "62698933"
+    uid: 93373f55-b6e2-437d-9e85-bcb3a8a804e3
+  spec:
+    revisionHistoryLimit: 10
+    selector:
+      matchLabels:
+        name: dagger-dagger-helm-engine
+    template:
+      metadata:
+        annotations:
+          checksum/config: a07dcb45c3e43598f5c6d1fd63ac258b70166868a3bd2374e7ff8238db0aa966
+          kubectl.kubernetes.io/restartedAt: "2024-10-08T17:09:56+03:00"
+        creationTimestamp: null
+        labels:
+          app.kubernetes.io/instance: dagger
+          app.kubernetes.io/managed-by: Helm
+          app.kubernetes.io/name: dagger-helm
+          app.kubernetes.io/part-of: dagger-helm
+          app.kubernetes.io/version: v0.13.3
+          helm.sh/chart: dagger-helm-0.13.3
+          name: dagger-dagger-helm-engine
+      spec:
+        containers:
+        - env:
+          - name: BUILDKIT_TLS_SKIP_VERIFY
+            value: "1"
+          - name: DOCKER_TLS_VERIFY
+            value: "0"
+          image: ghcr.io/kubiyabot/agent-costa:latest
+          imagePullPolicy: IfNotPresent
+          name: dagger-engine
+          readinessProbe:
+            exec:
+              command:
+              - buildctl
+              - debug
+              - workers
+            failureThreshold: 10
+            initialDelaySeconds: 5
+            periodSeconds: 15
+            successThreshold: 1
+            timeoutSeconds: 14
+          resources: {}
+          securityContext:
+            capabilities:
+              add:
+              - ALL
+            privileged: true
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          volumeMounts:
+          - mountPath: /var/lib/dagger
+            name: varlibdagger
+          - mountPath: /var/run/buildkit
+            name: varrundagger
+          - mountPath: /etc/dagger/engine.toml
+            name: dagger-engine-config
+            subPath: engine.toml
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext:
+          fsGroup: 1001
+          fsGroupChangePolicy: OnRootMismatch
+          runAsGroup: 1001
+          runAsUser: 0
+        serviceAccount: default
+        serviceAccountName: default
+        terminationGracePeriodSeconds: 300
+        volumes:
+        - hostPath:
+            path: /var/lib/dagger
+            type: ""
+          name: varlibdagger
+        - hostPath:
+            path: /var/run/dagger
+            type: ""
+          name: varrundagger
+        - configMap:
+            defaultMode: 420
+            items:
+            - key: engine.toml
+              path: engine.toml
+            name: dagger-dagger-helm-engine-config
+          name: dagger-engine-config
+    updateStrategy:
+      rollingUpdate:
+        maxSurge: 0
+        maxUnavailable: 1
+      type: RollingUpdate
+  status:
+    currentNumberScheduled: 10
+    desiredNumberScheduled: 10
+    numberAvailable: 10
+    numberMisscheduled: 0
+    numberReady: 10
+    observedGeneration: 7
+    updatedNumberScheduled: 10
+- apiVersion: rbac.authorization.k8s.io/v1
+  kind: Role
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"rbac.authorization.k8s.io/v1","kind":"Role","metadata":{"annotations":{},"name":"dagger-role","namespace":"dagger"},"rules":[{"apiGroups":[""],"resources":["*"],"verbs":["*"]}]}
+    creationTimestamp: "2024-09-05T16:14:40Z"
+    name: dagger-role
+    namespace: dagger
+    resourceVersion: "6287729"
+    uid: 8105fa8d-e2eb-4075-9237-ad15af6a6af2
+  rules:
+  - apiGroups:
+    - ""
+    resources:
+    - '*'
+    verbs:
+    - '*'
+- apiVersion: rbac.authorization.k8s.io/v1
+  kind: RoleBinding
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"rbac.authorization.k8s.io/v1","kind":"RoleBinding","metadata":{"annotations":{},"name":"dagger-role-binding","namespace":"dagger"},"roleRef":{"apiGroup":"rbac.authorization.k8s.io","kind":"Role","name":"dagger-role"},"subjects":[{"kind":"ServiceAccount","name":"kubiya-service-account","namespace":"kubiya"}]}
+    creationTimestamp: "2024-09-05T16:14:40Z"
+    name: dagger-role-binding
+    namespace: dagger
+    resourceVersion: "6287734"
+    uid: 114aa129-0975-45a3-b85e-45d9a791327e
+  roleRef:
+    apiGroup: rbac.authorization.k8s.io
+    kind: Role
+    name: dagger-role
+  subjects:
+  - kind: ServiceAccount
+    name: kubiya-service-account
+    namespace: kubiya
+- apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    annotations:
+      deployment.kubernetes.io/revision: "4"
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"apps/v1","kind":"Deployment","metadata":{"annotations":{},"name":"agent-manager","namespace":"kubiya"},"spec":{"replicas":2,"selector":{"matchLabels":{"app":"agent-manager","deployed-by":"kubiya"}},"template":{"metadata":{"labels":{"app":"agent-manager","deployed-by":"kubiya"}},"spec":{"containers":[{"env":[{"name":"TOOL_MANAGER_URL","value":"http://tool-manager.kubiya:80"},{"name":"KUBIYA_NATS_CREDS","value":"/nats/nats.creds"},{"name":"ENVIRONMENT","value":"production"}],"image":"ghcr.io/kubiyabot/agent-manager:v0.0.13","imagePullPolicy":"Always","name":"agent-manager","ports":[{"containerPort":8080}],"volumeMounts":[{"mountPath":"/nats/","name":"nats-creds-volume"}]}],"volumes":[{"name":"nats-creds-volume","secret":{"defaultMode":420,"items":[{"key":"nats.creds","path":"nats.creds"}],"secretName":"nats-creds-customer"}}]}}}}
+    creationTimestamp: "2024-09-17T22:16:53Z"
+    generation: 4
+    name: agent-manager
+    namespace: kubiya
+    resourceVersion: "30835453"
+    uid: e7a8880f-b04f-4964-a7b4-1e24d71d76ef
+  spec:
+    progressDeadlineSeconds: 600
+    replicas: 2
+    revisionHistoryLimit: 10
+    selector:
+      matchLabels:
+        app: agent-manager
+        deployed-by: kubiya
+    strategy:
+      rollingUpdate:
+        maxSurge: 25%
+        maxUnavailable: 25%
+      type: RollingUpdate
+    template:
+      metadata:
+        creationTimestamp: null
+        labels:
+          app: agent-manager
+          deployed-by: kubiya
+      spec:
+        containers:
+        - env:
+          - name: TOOL_MANAGER_URL
+            value: http://tool-manager.kubiya:80
+          - name: KUBIYA_NATS_CREDS
+            value: /nats/nats.creds
+          - name: ENVIRONMENT
+            value: production
+          image: ghcr.io/kubiyabot/agent-manager:0.0.15
+          imagePullPolicy: Always
+          name: agent-manager
+          ports:
+          - containerPort: 8080
+            protocol: TCP
+          resources: {}
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          volumeMounts:
+          - mountPath: /nats/
+            name: nats-creds-volume
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        terminationGracePeriodSeconds: 30
+        volumes:
+        - name: nats-creds-volume
+          secret:
+            defaultMode: 420
+            items:
+            - key: nats.creds
+              path: nats.creds
+            secretName: nats-creds-customer
+  status:
+    availableReplicas: 2
+    conditions:
+    - lastTransitionTime: "2024-09-17T22:29:05Z"
+      lastUpdateTime: "2024-09-17T22:29:05Z"
+      message: Deployment has minimum availability.
+      reason: MinimumReplicasAvailable
+      status: "True"
+      type: Available
+    - lastTransitionTime: "2024-09-17T22:16:53Z"
+      lastUpdateTime: "2024-09-19T17:00:16Z"
+      message: ReplicaSet "agent-manager-d98c4b667" has successfully progressed.
+      reason: NewReplicaSetAvailable
+      status: "True"
+      type: Progressing
+    observedGeneration: 4
+    readyReplicas: 2
+    replicas: 2
+    updatedReplicas: 2
+- apiVersion: v1
+  kind: Service
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"v1","kind":"Service","metadata":{"annotations":{},"name":"agent-manager","namespace":"kubiya"},"spec":{"ports":[{"name":"http","port":80,"targetPort":8080}],"selector":{"app":"agent-manager"},"type":"ClusterIP"}}
+    creationTimestamp: "2024-09-17T22:16:54Z"
+    name: agent-manager
+    namespace: kubiya
+    resourceVersion: "27616653"
+    uid: bc638b1b-c477-481a-acfc-d05789d5d7cc
+  spec:
+    clusterIP: 10.0.162.103
+    clusterIPs:
+    - 10.0.162.103
+    internalTrafficPolicy: Cluster
+    ipFamilies:
+    - IPv4
+    ipFamilyPolicy: SingleStack
+    ports:
+    - name: http
+      port: 80
+      protocol: TCP
+      targetPort: 8080
+    selector:
+      app: agent-manager
+    sessionAffinity: None
+    type: ClusterIP
+  status:
+    loadBalancer: {}
+- apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"apps/v1","kind":"Deployment","metadata":{"annotations":{},"name":"tool-manager","namespace":"kubiya"},"spec":{"replicas":3,"selector":{"matchLabels":{"app":"tool-manager","deployed-by":"kubiya"}},"template":{"metadata":{"labels":{"app":"tool-manager","deployed-by":"kubiya"}},"spec":{"containers":[{"env":[{"name":"GIT_SHA","value":"git-sha-placeholder"},{"name":"KUBIYA_SERVICE_ACCOUNT","value":"kubiya-service-account"},{"name":"KUBIYA_TOOL_TIMEOUT","value":"168h"},{"name":"KUBIYA_NATS_CREDS","value":"/opt/nats.creds"},{"name":"KUBIYA_USER_ORG","value":"kubiya-ai"},{"name":"KUBIYA_AGENT_UUID","value":"kubiya-ai"},{"name":"KUBIYA_SDK_SERVER_URL","value":"http://127.0.0.1:8000"},{"name":"KUBIYA_TOOLS_SHARED_VOLUME","value":"/tmp/kubiya_shared_tools"},{"name":"KUBIYA_IMAGE_REGISTRY_ADDRESS","value":"cache-registry-svc.kubiya"}],"image":"ghcr.io/kubiyabot/tool-manager:2d60b14c2243ff2eaaebfd8d91325c8065872ffc","imagePullPolicy":"Always","name":"tool-manager","ports":[{"containerPort":3001}],"volumeMounts":[{"mountPath":"/opt/","name":"nats-creds-volume"},{"mountPath":"/tmp/kubiya_shared_tools","name":"shared-volume"}]},{"command":["python","-m","kubiya_sdk","server","--host","0.0.0.0","--port","8000"],"env":[{"name":"GIT_SHA","value":"git-sha-placeholder"},{"name":"KUBIYA_SERVICE_ACCOUNT","value":"kubiya-service-account"},{"name":"KUBIYA_TOOL_TIMEOUT","value":"168h"},{"name":"KUBIYA_NATS_CREDS","value":"/opt/nats.creds"},{"name":"KUBIYA_USER_ORG","value":"kubiya-ai"},{"name":"KUBIYA_AGENT_UUID","value":"kubiya-ai"},{"name":"KUBIYA_TOOLS_SHARED_VOLUME","value":"/tmp/kubiya_shared_tools"}],"image":"ghcr.io/kubiyabot/sdk-py:v0.38.0","imagePullPolicy":"Always","name":"kubiya-sdk-server","ports":[{"containerPort":8000}],"volumeMounts":[{"mountPath":"/opt/","name":"nats-creds-volume"},{"mountPath":"/tmp/kubiya_shared_tools","name":"shared-volume"}]}],"serviceAccountName":"kubiya-service-account","volumes":[{"name":"nats-creds-volume","secret":{"defaultMode":420,"items":[{"key":"nats.creds","path":"nats.creds"}],"secretName":"nats-creds-customer"}},{"emptyDir":{},"name":"shared-volume"}]}}}}
+    name: tool-manager
+    namespace: kubiya
+  spec:
+    replicas: 3
+    selector:
+      matchLabels:
+        app: tool-manager
+        deployed-by: kubiya
+    template:
+      metadata:
+        labels:
+          app: tool-manager
+          deployed-by: kubiya
+      spec:
+        containers:
+        - env:
+          - name: GIT_SHA
+            value: git-sha-placeholder
+          - name: KUBIYA_SERVICE_ACCOUNT
+            value: kubiya-service-account
+          - name: KUBIYA_TOOL_TIMEOUT
+            value: 168h
+          - name: KUBIYA_NATS_CREDS
+            value: /opt/nats.creds
+          - name: KUBIYA_USER_ORG
+            value: kubiya-ai
+          - name: KUBIYA_AGENT_UUID
+            value: kubiya-ai
+          - name: KUBIYA_SDK_SERVER_URL
+            value: http://127.0.0.1:8000
+          - name: KUBIYA_TOOLS_SHARED_VOLUME
+            value: /tmp/kubiya_shared_tools
+          - name: KUBIYA_IMAGE_REGISTRY_ADDRESS
+            value: cache-registry-svc.kubiya
+          image: ghcr.io/kubiyabot/tool-manager:2d60b14c2243ff2eaaebfd8d91325c8065872ffc
+          imagePullPolicy: Always
+          name: tool-manager
+          ports:
+          - containerPort: 3001
+          volumeMounts:
+          - mountPath: /opt/
+            name: nats-creds-volume
+          - mountPath: /tmp/kubiya_shared_tools
+            name: shared-volume
+        - command:
+          - python
+          - -m
+          - kubiya_sdk
+          - server
+          - --host
+          - 0.0.0.0
+          - --port
+          - "8000"
+          env:
+          - name: GIT_SHA
+            value: git-sha-placeholder
+          - name: KUBIYA_SERVICE_ACCOUNT
+            value: kubiya-service-account
+          - name: KUBIYA_TOOL_TIMEOUT
+            value: 168h
+          - name: KUBIYA_NATS_CREDS
+            value: /opt/nats.creds
+          - name: KUBIYA_USER_ORG
+            value: kubiya-ai
+          - name: KUBIYA_AGENT_UUID
+            value: kubiya-ai
+          - name: KUBIYA_TOOLS_SHARED_VOLUME
+            value: /tmp/kubiya_shared_tools
+          image: ghcr.io/kubiyabot/sdk-py:v0.38.0
+          imagePullPolicy: Always
+          name: kubiya-sdk-server
+          ports:
+          - containerPort: 8000
+          volumeMounts:
+          - mountPath: /opt/
+            name: nats-creds-volume
+          - mountPath: /tmp/kubiya_shared_tools
+            name: shared-volume
+        serviceAccountName: kubiya-service-account
+        volumes:
+        - name: nats-creds-volume
+          secret:
+            defaultMode: 420
+            items:
+            - key: nats.creds
+              path: nats.creds
+            secretName: nats-creds-customer
+        - emptyDir: {}
+          name: shared-volume
+- apiVersion: v1
+  kind: Service
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"v1","kind":"Service","metadata":{"annotations":{},"name":"tool-manager","namespace":"kubiya"},"spec":{"ports":[{"name":"http","port":80,"targetPort":3001}],"selector":{"app":"tool-manager"},"type":"ClusterIP"}}
+    creationTimestamp: "2024-09-17T22:16:57Z"
+    name: tool-manager
+    namespace: kubiya
+    resourceVersion: "27616751"
+    uid: c3e2a77e-397f-4843-830f-19f5ab732236
+  spec:
+    clusterIP: 10.0.126.10
+    clusterIPs:
+    - 10.0.126.10
+    internalTrafficPolicy: Cluster
+    ipFamilies:
+    - IPv4
+    ipFamilyPolicy: SingleStack
+    ports:
+    - name: http
+      port: 80
+      protocol: TCP
+      targetPort: 3001
+    selector:
+      app: tool-manager
+    sessionAffinity: None
+    type: ClusterIP
+  status:
+    loadBalancer: {}
+- apiVersion: batch/v1
+  kind: CronJob
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"batch/v1","kind":"CronJob","metadata":{"annotations":{},"name":"image-updater","namespace":"kubiya"},"spec":{"jobTemplate":{"spec":{"template":{"spec":{"containers":[{"args":["-c","set -e\necho \"Starting image updater job\"\necho \"Installing curl and jq...\"\ninstall_packages curl jq\necho \"Downloading JSON file from S3...\"\nMAX_RETRIES=3\nRETRY_DELAY=5\nfor i in $(seq 1 $MAX_RETRIES); do\n  if curl -s -f https://kubiya-cli.s3.amazonaws.com/stable/kubiya_versions.json \u003e /tmp/kubiya_versions.json; then\n    break\n  fi\n  echo \"Attempt $i failed. Retrying in $RETRY_DELAY seconds...\"\n  sleep $RETRY_DELAY\ndone\nif [ $i -eq $MAX_RETRIES ]; then\n  echo \"Error: Failed to download JSON file after $MAX_RETRIES attempts\"\n  exit 1\nfi\nif ! jq empty /tmp/kubiya_versions.json; then\n  echo \"Error: Invalid JSON file downloaded from S3\"\n  echo \"File contents:\"\n  cat /tmp/kubiya_versions.json\n  exit 1\nfi\nupdate_deployment() {\n  local deployment=$1\n  local container=$2\n  local new_image=$3\n  echo \"Checking deployment $deployment, container $container\"\n  current_image=$(kubectl get deployment $deployment -n kubiya -o jsonpath=\"{.spec.template.spec.containers[?(@.name=='$container')].image}\")\n  if [ \"$current_image\" != \"$new_image\" ]; then\n    echo \"Updating $deployment deployment, container $container with new image: $new_image\"\n    kubectl set image deployment/$deployment -n kubiya $container=$new_image\n  else\n    echo \"Deployment $deployment, container $container is already up to date\"\n  fi\n}\necho \"Updating deployments...\"\ntool_manager_image=$(jq -r '.\"tool-manager\"' /tmp/kubiya_versions.json)\nupdate_deployment \"tool-manager\" \"tool-manager\" \"$tool_manager_image\"\nagent_manager_image=$(jq -r '.\"agent-manager\"' /tmp/kubiya_versions.json)\nupdate_deployment \"agent-manager\" \"agent-manager\" \"$agent_manager_image\"\nsdk_py_image=$(jq -r '.\"sdk-py\"' /tmp/kubiya_versions.json)\nupdate_deployment \"tool-manager\" \"kubiya-sdk-server\" \"$sdk_py_image\"\necho \"Image updater job completed successfully\"\n"],"command":["/bin/bash"],"image":"bitnami/kubectl:latest","name":"image-updater"}],"restartPolicy":"OnFailure","securityContext":{"runAsGroup":0,"runAsUser":0},"serviceAccountName":"image-updater-sa"}}}},"schedule":"0 * * * *"}}
+    creationTimestamp: "2024-09-17T22:16:58Z"
+    generation: 1
+    name: image-updater
+    namespace: kubiya
+    resourceVersion: "79889164"
+    uid: 2b95661f-0b6f-4532-8396-8725b51b4b91
+  spec:
+    concurrencyPolicy: Allow
+    failedJobsHistoryLimit: 1
+    jobTemplate:
+      metadata:
+        creationTimestamp: null
+      spec:
+        template:
+          metadata:
+            creationTimestamp: null
+          spec:
+            containers:
+            - args:
+              - -c
+              - |
+                set -e
+                echo "Starting image updater job"
+                echo "Installing curl and jq..."
+                install_packages curl jq
+                echo "Downloading JSON file from S3..."
+                MAX_RETRIES=3
+                RETRY_DELAY=5
+                for i in $(seq 1 $MAX_RETRIES); do
+                  if curl -s -f https://kubiya-cli.s3.amazonaws.com/stable/kubiya_versions.json > /tmp/kubiya_versions.json; then
+                    break
+                  fi
+                  echo "Attempt $i failed. Retrying in $RETRY_DELAY seconds..."
+                  sleep $RETRY_DELAY
+                done
+                if [ $i -eq $MAX_RETRIES ]; then
+                  echo "Error: Failed to download JSON file after $MAX_RETRIES attempts"
+                  exit 1
+                fi
+                if ! jq empty /tmp/kubiya_versions.json; then
+                  echo "Error: Invalid JSON file downloaded from S3"
+                  echo "File contents:"
+                  cat /tmp/kubiya_versions.json
+                  exit 1
+                fi
+                update_deployment() {
+                  local deployment=$1
+                  local container=$2
+                  local new_image=$3
+                  echo "Checking deployment $deployment, container $container"
+                  current_image=$(kubectl get deployment $deployment -n kubiya -o jsonpath="{.spec.template.spec.containers[?(@.name=='$container')].image}")
+                  if [ "$current_image" != "$new_image" ]; then
+                    echo "Updating $deployment deployment, container $container with new image: $new_image"
+                    kubectl set image deployment/$deployment -n kubiya $container=$new_image
+                  else
+                    echo "Deployment $deployment, container $container is already up to date"
+                  fi
+                }
+                echo "Updating deployments..."
+                tool_manager_image=$(jq -r '."tool-manager"' /tmp/kubiya_versions.json)
+                update_deployment "tool-manager" "tool-manager" "$tool_manager_image"
+                agent_manager_image=$(jq -r '."agent-manager"' /tmp/kubiya_versions.json)
+                update_deployment "agent-manager" "agent-manager" "$agent_manager_image"
+                sdk_py_image=$(jq -r '."sdk-py"' /tmp/kubiya_versions.json)
+                update_deployment "tool-manager" "kubiya-sdk-server" "$sdk_py_image"
+                echo "Image updater job completed successfully"
+              command:
+              - /bin/bash
+              image: bitnami/kubectl:latest
+              imagePullPolicy: Always
+              name: image-updater
+              resources: {}
+              terminationMessagePath: /dev/termination-log
+              terminationMessagePolicy: File
+            dnsPolicy: ClusterFirst
+            restartPolicy: OnFailure
+            schedulerName: default-scheduler
+            securityContext:
+              runAsGroup: 0
+              runAsUser: 0
+            serviceAccount: image-updater-sa
+            serviceAccountName: image-updater-sa
+            terminationGracePeriodSeconds: 30
+    schedule: 0 * * * *
+    successfulJobsHistoryLimit: 3
+    suspend: false
+  status:
+    lastScheduleTime: "2024-10-18T15:00:00Z"
+    lastSuccessfulTime: "2024-10-14T13:00:08Z"
+- apiVersion: v1
+  kind: ServiceAccount
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"v1","kind":"ServiceAccount","metadata":{"annotations":{},"name":"image-updater-sa","namespace":"kubiya"}}
+    creationTimestamp: "2024-09-17T22:16:59Z"
+    name: image-updater-sa
+    namespace: kubiya
+    resourceVersion: "27616825"
+    uid: 6e2884a5-869a-4cc5-9bda-7d07557add5e
+- apiVersion: rbac.authorization.k8s.io/v1
+  kind: Role
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"rbac.authorization.k8s.io/v1","kind":"Role","metadata":{"annotations":{},"name":"deployment-updater","namespace":"kubiya"},"rules":[{"apiGroups":["apps"],"resources":["deployments"],"verbs":["get","patch"]}]}
+    creationTimestamp: "2024-09-17T22:17:00Z"
+    name: deployment-updater
+    namespace: kubiya
+    resourceVersion: "27616856"
+    uid: 277a55f7-7811-48a9-a722-0fff18c00bda
+  rules:
+  - apiGroups:
+    - apps
+    resources:
+    - deployments
+    verbs:
+    - get
+    - patch
+- apiVersion: rbac.authorization.k8s.io/v1
+  kind: RoleBinding
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"rbac.authorization.k8s.io/v1","kind":"RoleBinding","metadata":{"annotations":{},"name":"image-updater-rolebinding","namespace":"kubiya"},"roleRef":{"apiGroup":"rbac.authorization.k8s.io","kind":"Role","name":"deployment-updater"},"subjects":[{"kind":"ServiceAccount","name":"image-updater-sa","namespace":"kubiya"}]}
+    creationTimestamp: "2024-09-17T22:17:01Z"
+    name: image-updater-rolebinding
+    namespace: kubiya
+    resourceVersion: "27616890"
+    uid: a92dd979-84cc-4e3a-9f55-a13c536b10e5
+  roleRef:
+    apiGroup: rbac.authorization.k8s.io
+    kind: Role
+    name: deployment-updater
+  subjects:
+  - kind: ServiceAccount
+    name: image-updater-sa
+    namespace: kubiya
+kind: List
+metadata: {}

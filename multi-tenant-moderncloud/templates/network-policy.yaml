@@ -1,0 +1,79 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: deny-cross-namespace
+  namespace: ${TENANT_NAME}
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  # Allow ingress only from same namespace
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          tenant: ${TENANT_NAME}
+  # Allow ingress from ingress controller
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          app.kubernetes.io/name: ingress-nginx
+    - namespaceSelector:
+        matchLabels:
+          name: kube-system
+  egress:
+  # Allow egress only to same namespace
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          tenant: ${TENANT_NAME}
+  # Allow DNS queries
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: kube-system
+    ports:
+    - protocol: UDP
+      port: 53
+  # Allow egress to internet (for Jenkins to pull plugins, etc)
+  - to:
+    - namespaceSelector: {}
+    ports:
+    - protocol: TCP
+      port: 443
+    - protocol: TCP
+      port: 80
+  # Block communication to other tenant namespaces explicitly
+  - to:
+    - namespaceSelector:
+        matchExpressions:
+        - key: tenant
+          operator: Exists
+        - key: tenant
+          operator: NotIn
+          values:
+          - ${TENANT_NAME}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-jenkins-agent-communication
+  namespace: ${TENANT_NAME}
+spec:
+  podSelector:
+    matchLabels:
+      app: jenkins
+  policyTypes:
+  - Ingress
+  ingress:
+  # Allow Jenkins agents to communicate with Jenkins master
+  - from:
+    - podSelector:
+        matchLabels:
+          jenkins: agent
+    ports:
+    - protocol: TCP
+      port: 50000
+    - protocol: TCP
+      port: 8080

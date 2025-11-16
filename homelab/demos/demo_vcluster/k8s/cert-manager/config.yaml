@@ -1,0 +1,15 @@
+controlPlane:
+  ingress:
+    enabled: true
+    host: 135.225.245.182.kubiya.ai
+  proxy:
+    extraSANs:
+    - 135.225.245.182.kubiya.ai
+
+sync:
+  fromHost:
+    ingressClasses:
+      enabled: true
+  toHost:
+    ingressClasses:
+      enable: true

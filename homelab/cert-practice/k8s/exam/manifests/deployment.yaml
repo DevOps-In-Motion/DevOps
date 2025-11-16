@@ -1,0 +1,40 @@
+# logger-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: logging-deployment
+  namespace: logging-ns
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: logger
+  template:
+    metadata:
+      labels:
+        app: logger
+    spec:
+      volumes:
+        - name: log-volume
+          emptyDir: {}
+      initContainers:
+        - name: log-agent
+          image: busybox
+          command:
+            - sh
+            - -c
+            - "touch /var/log/app/app.log; tail -f /var/log/app/app.log"
+          volumeMounts:
+            - name: log-volume
+              mountPath: /var/log/app
+          restartPolicy: Always 
+      containers:
+        - name: app-container
+          image: busybox
+          command:
+            - sh
+            - -c
+            - "while true; do echo 'Log entry' >> /var/log/app/app.log; sleep 5; done"
+          volumeMounts:
+            - name: log-volume
+              mountPath: /var/log/app

@@ -1,0 +1,25 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: cassandra-network-policy
+  namespace: cassandra
+spec:
+  podSelector:
+    matchLabels:
+      app: cassandra
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app: cassandra
+    - podSelector:
+        matchLabels:
+          app: cassandra-client
+    ports:
+    - protocol: TCP
+      port: 7000  # Internode
+    - protocol: TCP
+      port: 9042  # CQL

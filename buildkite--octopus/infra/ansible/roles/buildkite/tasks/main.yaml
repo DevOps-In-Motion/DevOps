@@ -1,0 +1,7 @@
+---
+- name: Buildkite | Install
+  ansible.builtin.include_tasks: install.yml
+- name: Buildkite | SSH
+  ansible.builtin.include_tasks: ssh.yml
+- name: Buildkite | Configure
+  ansible.builtin.include_tasks: configure.yml

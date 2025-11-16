@@ -1,0 +1,64 @@
+---
+# deploy-cassandra.yml
+- name: Deploy Cassandra Cluster on Kubernetes
+  hosts: localhost
+  gather_facts: no
+  vars:
+    cassandra_namespace: cassandra
+    cassandra_version: "5.0"
+    cluster_size: 3
+    
+  tasks:
+    - name: Create namespace
+      kubernetes.core.k8s:
+        name: "{{ cassandra_namespace }}"
+        api_version: v1
+        kind: Namespace
+        state: present
+
+    - name: Deploy Cassandra operator
+      kubernetes.core.helm:
+        name: cassandra-operator
+        chart_ref: cassandra-operator/cassandra-operator
+        release_namespace: "{{ cassandra_namespace }}"
+        values:
+          operator:
+            image: k8ssandra/cass-operator:1.17.0
+          webhook:
+            enabled: true
+
+    - name: Create Cassandra cluster
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: cassandra.datastax.com/v1beta1
+          kind: CassandraDatacenter
+          metadata:
+            name: dc1
+            namespace: "{{ cassandra_namespace }}"
+          spec:
+            clusterName: CassandraCluster2025
+            serverVersion: "{{ cassandra_version }}"
+            size: "{{ cluster_size }}"
+            config:
+              cassandra-yaml:
+                authenticator: PasswordAuthenticator
+                authorizer: CassandraAuthorizer
+              jvm-options:
+                initial_heap_size: "2G"
+                max_heap_size: "2G"
+            storageConfig:
+              cassandraDataVolumeClaimSpec:
+                storageClassName: fast-ssd
+                accessModes:
+                  - ReadWriteOnce
+                resources:
+                  requests:
+                    storage: 100Gi
+            resources:
+              limits:
+                cpu: "2"
+                memory: 4Gi
+              requests:
+                cpu: "1"
+                memory: 2Gi

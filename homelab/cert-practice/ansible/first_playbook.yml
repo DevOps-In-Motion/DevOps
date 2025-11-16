@@ -1,0 +1,17 @@
+---
+# Playbook starts with three dashes
+- name: My First Playbook # Name of the play
+  hosts: localhost # Target host(s) for this play
+  connection: local # Connection type (local in this case)
+
+  tasks: # List of tasks to be executed
+    - name: Create a directory # Name of the first task
+      file: # The 'file' module is used for this task
+        path: /home/labex/project/test_directory # Path of the directory to create
+        state: directory # Desired state (create the directory)
+        mode: "0755" # Permissions for the directory
+
+    - name: Create a file # Name of the second task
+      copy: # The 'copy' module is used for this task
+        content: "Hello from Ansible!" # Content to be written to the file
+        dest: /home/labex/project/test_directory/hello.txt # Destination path for the file

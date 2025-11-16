@@ -1,0 +1,16 @@
+---
+- name: Demonstrate multi-environment playbook
+  hosts: all
+  gather_facts: no
+  tasks:
+    - name: Print environment type
+      debug:
+        msg: "This host belongs to the {{ 'production' if 'prod' in group_names else 'development' }} environment"
+
+    - name: Show hostname
+      command: hostname
+      register: hostname_output
+
+    - name: Display hostname
+      debug:
+        msg: "The hostname is: {{ hostname_output.stdout }}"

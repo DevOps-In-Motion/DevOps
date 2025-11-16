@@ -1,0 +1,24 @@
+# playbook.yml
+
+- hosts: buildkite-instance
+  become: true
+  tasks:
+    - name: Install Python for Ansible
+      raw: sudo apt-get install -y python3
+
+    - name: Install Buildkite Agent
+      raw: |
+              echo "Installing Buildkite agent..."
+              sudo apt-get install -y curl
+              TOKEN="INSERT-YOUR-AGENT-TOKEN-HERE" 
+              curl -sL https://raw.githubusercontent.com/buildkite/agent/main/install.sh | bash -s token=$TOKEN
+              
+    - name: Start Buildkite Agent
+      raw: |          
+              ~/.buildkite-agent/bin/buildkite-agent start
+
+    - name: Generate SSH Key
+      raw: |
+              mkdir -p ~/.ssh && cd ~/.ssh
+              ssh-keygen -t rsa -b 4096 -C "build@myorg.com"
+                          

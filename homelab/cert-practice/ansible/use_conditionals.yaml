@@ -1,0 +1,42 @@
+---
+- name: Use Jinja2 conditionals
+  hosts: localhost
+  vars:
+    user_type: "admin"
+    fruits:
+      - apple
+      - banana
+      - cherry
+  tasks:
+    - name: Create file from template (admin)
+      template:
+        src: templates/conditionals.j2
+        dest: /tmp/conditionals_admin.txt
+
+    - name: Create file from template (user)
+      template:
+        src: templates/conditionals.j2
+        dest: /tmp/conditionals_user.txt
+      vars:
+        user_type: "user"
+
+    - name: Create file from template (guest)
+      template:
+        src: templates/conditionals.j2
+        dest: /tmp/conditionals_guest.txt
+      vars:
+        user_type: "guest"
+        fruits: []
+
+    - name: Display file contents
+      command: "cat {{ item }}"
+      loop:
+        - /tmp/conditionals_admin.txt
+        - /tmp/conditionals_user.txt
+        - /tmp/conditionals_guest.txt
+      register: file_contents
+
+    - name: Show file contents
+      debug:
+        var: file_contents.results[item].stdout_lines
+      loop: [0, 1, 2]

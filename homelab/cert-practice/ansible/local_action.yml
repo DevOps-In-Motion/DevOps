@@ -1,0 +1,16 @@
+- name: Executing a Command with Variable Substitution
+  gather_facts: false
+  hosts: localhost
+  vars:
+    message: "Hello, Ansible!"
+
+  tasks:
+    - name: Print a message with variable substitution
+      local_action:
+        module: command
+        cmd: echo "{{ message }}"
+      register: result
+
+    - name: Debug the output
+      debug:
+        var: result.stdout

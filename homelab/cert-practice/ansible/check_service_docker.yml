@@ -1,0 +1,34 @@
+---
+- name: Check and manage SSH service in Docker
+  hosts: localhost
+  become: yes # This allows Ansible to use sudo
+  tasks:
+    - name: Check SSH service status
+      command: service ssh status
+      register: ssh_status
+      ignore_errors: yes
+
+    - name: Display SSH service status
+      debug:
+        msg: "SSH service status: {{ ssh_status.stdout }}"
+
+    - name: Start SSH service if not running
+      command: service ssh start
+      when: ssh_status.rc != 0
+
+    - name: Verify SSH service is running
+      command: service ssh status
+      register: ssh_status_after
+
+    - name: Display final SSH service status
+      debug:
+        msg: "SSH service status is now: {{ ssh_status_after.stdout }}"
+
+    - name: Check if SSH port is listening
+      command: netstat -tuln | grep :22
+      register: ssh_port_check
+      ignore_errors: yes
+
+    - name: Display SSH port status
+      debug:
+        msg: "SSH port 22 is {{ 'open' if ssh_port_check.rc == 0 else 'closed' }}"

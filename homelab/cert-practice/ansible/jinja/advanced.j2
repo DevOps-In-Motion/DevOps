@@ -1,0 +1,32 @@
+{% macro render_list(title, items) %}
+{{ title }}:
+{% for item in items %}
+  - {{ item }}
+{% endfor %}
+{% endmacro %}
+
+1. Using a macro:
+{{ render_list("Fruits", fruits) }}
+
+{{ render_list("Vegetables", vegetables) }}
+
+2. Using set:
+{% set greeting = "Hello, " + name + "!" %}
+{{ greeting }}
+
+3. Custom filter (defined in playbook):
+{{ complex_data | to_nice_json }}
+
+4. Whitespace control:
+{% for item in fruits -%}
+    {{ item }}
+{%- if not loop.last %}, {% endif %}
+{%- endfor %}
+
+5. Raw block (no processing):
+{% raw %}
+This {{ will_not_be_processed }}
+{% endraw %}
+
+6. Include another template:
+{% include 'simple_include.j2' %}

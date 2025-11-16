@@ -1,0 +1,23 @@
+---
+- name: Buildkite | Install | Apt Repository
+  block:
+    - name: Repository Key
+      ansible.builtin.get_url:
+        url: https://keys.openpgp.org/vks/v1/by-fingerprint/32A37959C2FA5C3C99EFBC32A79206696452D198
+        dest: /usr/share/keyrings/buildkite.asc
+        mode: "0644"
+    - name: Repository
+      ansible.builtin.apt_repository:
+        repo: "deb [signed-by=/usr/share/keyrings/buildkite.asc] https://apt.buildkite.com/buildkite-agent stable main"
+        state: present
+        filename: buildkite
+
+- name: Buildkite | Install | Apt Cache
+  ansible.builtin.apt:
+    update_cache: true
+
+- name: Buildkite | Install | Package
+  ansible.builtin.package:
+    name:
+      - "buildkite-agent={{ buildkite_agent_version }}"
+    state: present

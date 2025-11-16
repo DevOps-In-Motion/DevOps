@@ -1,0 +1,27 @@
+---
+- name: Deploy Nginx with a handler
+  hosts: localhost
+  become: yes
+  tasks:
+    - name: Ensure Nginx is installed
+      ansible.builtin.dnf:
+        name: nginx
+        state: present
+
+    - name: Start and enable Nginx service
+      ansible.builtin.systemd:
+        name: nginx
+        state: started
+        enabled: yes
+
+    - name: Copy homepage
+      ansible.builtin.copy:
+        src: files/index.html
+        dest: /usr/share/nginx/html/index.html
+      notify: reload nginx
+
+  handlers:
+    - name: reload nginx
+      ansible.builtin.systemd:
+        name: nginx
+        state: reloaded

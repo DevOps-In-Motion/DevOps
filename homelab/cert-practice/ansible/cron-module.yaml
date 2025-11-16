@@ -1,0 +1,8 @@
+- hosts: localhost
+  tasks:
+    - name: Create a simple cron job
+      cron:
+        name: my_cron_job
+        minute: "*/5"
+        job: /home/labex/project/script.sh
+        # user: developer

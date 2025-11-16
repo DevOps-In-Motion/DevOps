@@ -1,0 +1,123 @@
+pipeline {
+    agent {
+        kubernetes {
+            yaml """
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    jenkins: agent
+spec:
+  containers:
+  - name: kaniko
+    image: gcr.io/kaniko-project/executor:debug
+    command:
+    - /busybox/cat
+    tty: true
+    volumeMounts:
+    - name: docker-config
+      mountPath: /kaniko/.docker
+  - name: trivy
+    image: aquasec/trivy:latest
+    command:
+    - cat
+    tty: true
+  - name: crane
+    image: gcr.io/go-containerregistry/crane:debug
+    command:
+    - cat
+    tty: true
+  volumes:
+  - name: docker-config
+    secret:
+      secretName: regcred
+      items:
+      - key: .dockerconfigjson
+        path: config.json
+"""
+        }
+    }
+    
+    environment {
+        IMAGE_NAME = "your-registry.io/your-app"
+        IMAGE_TAG = "${env.GIT_COMMIT.take(7)}-${env.BUILD_NUMBER}"
+    }
+    
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+        
+        stage('Build Image') {
+            steps {
+                container('kaniko') {
+                    sh """
+                        /kaniko/executor \
+                          --context=${env.WORKSPACE} \
+                          --dockerfile=${env.WORKSPACE}/Dockerfile \
+                          --destination=${IMAGE_NAME}:${IMAGE_TAG} \
+                          --cache=true \
+                          --cache-ttl=24h \
+                          --snapshot-mode=redo \
+                          --compressed-caching=false
+                    """
+                }
+            }
+        }
+        
+        stage('Security Scan') {
+            steps {
+                container('trivy') {
+                    sh """
+                        trivy image \
+                          --severity HIGH,CRITICAL \
+                          --exit-code 1 \
+                          --timeout 10m \
+                          ${IMAGE_NAME}:${IMAGE_TAG}
+                    """
+                }
+            }
+        }
+        
+        stage('Validate Image') {
+            steps {
+                container('crane') {
+                    sh """
+                        # Verify image exists and is pullable
+                        crane manifest ${IMAGE_NAME}:${IMAGE_TAG}
+                        
+                        # Check image size
+                        crane manifest ${IMAGE_NAME}:${IMAGE_TAG} | wc -c
+                        
+                        # Validate image config
+                        crane config ${IMAGE_NAME}:${IMAGE_TAG}
+                    """
+                }
+            }
+        }
+        
+        stage('Tag as Latest') {
+            when {
+                branch 'main'
+            }
+            steps {
+                container('crane') {
+                    sh """
+                        crane tag ${IMAGE_NAME}:${IMAGE_TAG} latest
+                    """
+                }
+            }
+        }
+    }
+    
+    post {
+        success {
+            echo "✅ Image ${IMAGE_NAME}:${IMAGE_TAG} built and pushed successfully!"
+        }
+        failure {
+            echo "❌ Pipeline failed!"
+        }
+    }
+}

@@ -1,0 +1,44 @@
+# ============================================================================
+# TERRAFORM VARIABLES EXAMPLE
+# ============================================================================
+# Copy this file to terraform.tfvars and update with your values
+# terraform.tfvars is gitignored and should not be committed
+
+# AWS Configuration
+aws_region = "us-east-2"
+availability_zone = "us-east-2a"
+
+# AMI IDs (update with your region-specific AMIs)
+llm_host_ami = "ami-01860f9261027f15f"
+bastion_ami = "ami-0f5fcdfbd140e4ab7"
+
+# Instance Types
+llm_host_instance_type = "m7i-flex.large"
+bastion_instance_type = "t3.micro"
+
+# Key Pair Configuration
+key_pair_name = "bastion-key"
+# IMPORTANT: Replace with your actual public key
+# You can get your public key with: cat ~/.ssh/id_rsa.pub
+key_pair_public_key = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC... your-public-key-here"
+
+# Network Configuration
+vpc_cidr = "10.0.0.0/16"
+private_subnet_cidr = "10.0.1.0/24"
+public_subnet_cidr = "10.0.2.0/24"
+
+# Volume Sizes (GB)
+llm_host_volume_size = 100
+bastion_volume_size = 100
+
+# SSH Configuration
+ssh_user = "ubuntu"
+ssh_key_path = "~/.ssh/bastion-key.pem"
+
+# Tags
+tags = {
+    Project    = "llm-api"
+    ManagedBy  = "terraform"
+    Environment = "production"
+}
+

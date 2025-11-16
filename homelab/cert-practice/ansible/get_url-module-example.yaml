@@ -1,0 +1,9 @@
+- hosts: localhost
+  tasks:
+    - name: Download a file from a URL with custom headers
+      get_url:
+        url: "https://releases.ansible.com/ansible/ansible-2.9.25.tar.gz"
+        dest: "/tmp/ansible-2.9.25-1.tar.gz"
+        headers:
+          Custom-Header-1: Value1
+          Custom-Header-2: Value2

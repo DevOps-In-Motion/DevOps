@@ -1,0 +1,12 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name:  grafana-service
+  namespace: ingress-nginx
+spec:
+  type:  ClusterIP
+  selector:
+    app.kubernetes.io/name:  grafana
+  ports:
+  - port:  80
+    targetPort:  3000

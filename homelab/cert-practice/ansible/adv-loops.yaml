@@ -1,0 +1,29 @@
+---
+- name: Advanced Loop Techniques
+  hosts: localhost
+  vars:
+    users:
+      - name: alice
+        groups: ["developers", "testers"]
+      - name: bob
+        groups: ["managers", "developers"]
+  tasks:
+    - name: Create users with groups
+      debug:
+        msg: "Creating user {{ item.name }} with groups: {{ item.groups | join(', ') }}"
+      loop: "{{ users }}"
+
+    - name: Demonstrate loop_control
+      debug:
+        msg: "Processing item {{ index }} - {{ item }}"
+      loop: ["a", "b", "c", "d"]
+      loop_control:
+        index_var: index
+
+    - name: Loop over dictionary
+      debug:
+        msg: "{{ key }}: {{ value }}"
+      loop: "{{ {'x': 1, 'y': 2, 'z': 3} | dict2items }}"
+      vars:
+        key: "{{ item.key }}"
+        value: "{{ item.value }}"

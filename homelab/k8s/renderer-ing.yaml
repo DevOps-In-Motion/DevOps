@@ -1,0 +1,33 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: grafana-render-ingress
+  namespace: monitoring
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    kubernetes.io/ingress.class: nginx
+    spec.ingressClassName: nginx
+    # nginx.ingress.kubernetes.io/rewrite-target: /$1
+    nginx.ingress.kubernetes.io/use-regex: "true"
+spec:
+  rules:
+  - host: render.demos.kubiya.ai #Use your own domain
+    http:
+      paths:
+      - pathType: ImplementationSpecific
+        path: '/render/d/4DFTt9Wnk/' # -performance?orgId=1' # [!-~]
+        backend:
+          service:
+            name: grafana-renderer-svc
+            port:
+              number: 8081
+  - host: grafana.demos.kubiya.ai #Use your own domain
+    http:
+      paths:           
+      - pathType: ImplementationSpecific
+        path: '/render/'
+        backend:
+          service:
+            name: grafana-renderer-svc
+            port:
+              number: 8081

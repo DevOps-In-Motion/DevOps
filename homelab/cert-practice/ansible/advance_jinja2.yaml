@@ -1,0 +1,33 @@
+---
+- name: Use advanced Jinja2 techniques
+  hosts: localhost
+  vars:
+    name: "Ansible Expert"
+    fruits:
+      - apple
+      - banana
+      - cherry
+    vegetables:
+      - carrot
+      - potato
+      - broccoli
+    complex_data:
+      key1: value1
+      key2:
+        - item1
+        - item2
+    custom_filters:
+      to_nice_json: "{{ '(' ~ ((complex_data | to_json) | replace('\"', '\\\"')) ~ ')' | from_json | to_nice_json }}"
+  tasks:
+    - name: Create file from template
+      template:
+        src: templates/advanced.j2
+        dest: /tmp/advanced.txt
+
+    - name: Display file contents
+      command: cat /tmp/advanced.txt
+      register: file_contents
+
+    - name: Show file contents
+      debug:
+        var: file_contents.stdout_lines

@@ -1,0 +1,49 @@
+---
+- name: Deploy a Secure Apache Web Server
+  hosts: localhost
+  become: yes
+  vars:
+    packages_to_install:
+      - httpd
+      - mod_ssl
+    ssl_cert_path: /etc/pki/tls/certs/localhost.crt
+    ssl_key_path: /etc/pki/tls/private/localhost.key
+
+  tasks:
+    - name: Stop nginx to free port 80
+      ansible.builtin.systemd:
+        name: nginx
+        state: stopped
+      ignore_errors: yes
+
+    - name: Install httpd and mod_ssl packages
+      ansible.builtin.dnf:
+        name: "{{ packages_to_install }}"
+        state: present
+
+    - name: Generate self-signed SSL certificate if it does not exist
+      ansible.builtin.command: >
+        openssl req -new -nodes -x509
+        -subj "/C=US/ST=None/L=None/O=LabEx/CN=localhost"
+        -keyout {{ ssl_key_path }}
+        -out {{ ssl_cert_path }}
+      args:
+        creates: "{{ ssl_cert_path }}"
+
+    - name: Deploy custom index.html
+      ansible.builtin.copy:
+        src: files/index.html
+        dest: /var/www/html/index.html
+      notify: restart httpd
+
+    - name: Start and enable httpd service
+      ansible.builtin.systemd:
+        name: httpd
+        state: started
+        enabled: yes
+
+  handlers:
+    - name: restart httpd
+      ansible.builtin.systemd:
+        name: httpd
+        state: restarted

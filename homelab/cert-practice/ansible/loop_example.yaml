@@ -1,0 +1,22 @@
+---
+- name: Loop Example
+  hosts: localhost
+  vars:
+    fruits:
+      - apple
+      - banana
+      - cherry
+  tasks:
+    - name: Print fruit names
+      debug:
+        msg: "Current fruit: {{ item }}"
+      loop: "{{ fruits }}"
+
+    - name: Create directories
+      file:
+        path: "/tmp/{{ item }}"
+        state: directory
+      loop:
+        - dir1
+        - dir2
+        - dir3

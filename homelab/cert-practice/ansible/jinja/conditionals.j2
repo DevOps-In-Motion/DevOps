@@ -1,0 +1,19 @@
+{% if user_type == 'admin' %}
+Welcome, Administrator!
+You have full access to the system.
+{% elif user_type == 'user' %}
+Welcome, User!
+You have limited access to the system.
+{% else %}
+Welcome, Guest!
+You have read-only access to the system.
+{% endif %}
+
+{% if fruits %}
+Available fruits:
+{% for fruit in fruits %}
+  - {{ fruit }}
+{% endfor %}
+{% else %}
+No fruits available.
+{% endif %}

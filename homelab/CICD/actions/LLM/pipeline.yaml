@@ -1,0 +1,99 @@
+name: Python CI with LLM Analysis
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  test-and-scan:
+    runs-on: ubuntu-latest
+    container:
+      image: python:3.11
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Install dependencies
+      run: |
+        pip install pytest pytest-cov bandit safety
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+    
+    - name: Run unit tests
+      id: tests
+      continue-on-error: true
+      run: |
+        pytest -v --tb=short --cov=. 2>&1 | tee test_output.log
+        echo "TEST_EXIT_CODE=${PIPESTATUS[0]}" >> $GITHUB_ENV
+    
+    - name: Run security scan (Bandit)
+      id: bandit
+      continue-on-error: true
+      run: |
+        bandit -r . -f txt 2>&1 | tee bandit_output.log
+        echo "BANDIT_EXIT_CODE=${PIPESTATUS[0]}" >> $GITHUB_ENV
+    
+    - name: Run dependency vulnerability check
+      id: safety
+      continue-on-error: true
+      run: |
+        safety check 2>&1 | tee safety_output.log
+        echo "SAFETY_EXIT_CODE=${PIPESTATUS[0]}" >> $GITHUB_ENV
+    
+    - name: Collect and send errors to LLM
+      if: env.TEST_EXIT_CODE != '0' || env.BANDIT_EXIT_CODE != '0' || env.SAFETY_EXIT_CODE != '0'
+      env:
+        LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+        LLM_ENDPOINT: ${{ secrets.LLM_ENDPOINT }}
+      run: |
+        # Combine all outputs
+        ERROR_OUTPUT=$(cat <<EOF
+        === BUILD FAILURE REPORT ===
+        Repository: ${{ github.repository }}
+        Branch: ${{ github.ref_name }}
+        Commit: ${{ github.sha }}
+        
+        Test Exit Code: ${TEST_EXIT_CODE}
+        Bandit Exit Code: ${BANDIT_EXIT_CODE}
+        Safety Exit Code: ${SAFETY_EXIT_CODE}
+        
+        === UNIT TEST OUTPUT ===
+        $(cat test_output.log || echo "No test output")
+        
+        === SECURITY SCAN OUTPUT ===
+        $(cat bandit_output.log || echo "No bandit output")
+        
+        === DEPENDENCY VULNERABILITY CHECK ===
+        $(cat safety_output.log || echo "No safety output")
+        EOF
+        )
+        
+        # Escape for JSON
+        ERROR_JSON=$(echo "$ERROR_OUTPUT" | jq -Rs .)
+        
+        # Send to LLM endpoint
+        curl -X POST "${LLM_ENDPOINT}" \
+          -H "Content-Type: application/json" \
+          -H "Authorization: Bearer ${LLM_API_KEY}" \
+          -d "{\"prompt": \"Analyze this CI/CD failure and provide suggestions:\n${ERROR_JSON}\", \"max_tokens\": 1000}" \
+          -o llm_response.json
+        
+        echo "=== LLM Analysis ==="
+        cat llm_response.json
+    
+    - name: Upload artifacts on failure
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: failure-logs
+        path: |
+          test_output.log
+          bandit_output.log
+          safety_output.log
+          llm_response.json
+    
+    - name: Fail job if tests failed
+      if: env.TEST_EXIT_CODE != '0' || env.BANDIT_EXIT_CODE != '0' || env.SAFETY_EXIT_CODE != '0'
+      run: exit 1

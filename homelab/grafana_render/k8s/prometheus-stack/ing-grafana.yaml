@@ -1,0 +1,22 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: grafana-ingress
+  namespace: monitoring
+  annotations:
+    spec.ingressClassName: nginx
+spec:
+  rules:
+  - http:
+      paths:
+      - pathType: Prefix
+        path: "/"
+        backend:
+          service:
+            name: prometheus-grafana
+            port:
+              number: 80
+  tls:
+  - hosts:
+    - grafana.demos.kubiya.ai
+    secretName: grafana-secret
