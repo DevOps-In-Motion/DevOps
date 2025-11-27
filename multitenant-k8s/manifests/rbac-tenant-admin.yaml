@@ -1,0 +1,26 @@
+# Tenant admin role
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: ${TENANT_NAME}
+  name: go-mcp-tenantadmin-role
+rules:
+- apiGroups: ["", "apps"]
+  resources: ["*"]
+  verbs: ["*"]
+
+---
+# Binding for tenant admin
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: go-mcp-tenantadmin-role-binding
+  namespace: ${TENANT_NAME}
+subjects:
+- kind: ServiceAccount
+  name: go-mcp-tenantadmin-role
+  apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: Role
+  name: go-mcp-tenantadmin-role
+  apiGroup: rbac.authorization.k8s.io

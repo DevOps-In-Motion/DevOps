@@ -1,0 +1,16 @@
+# Limit resource requests in the namespace - quota-ns
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: gpu-quota
+  namespace: quota-ns
+spec:
+  hard:
+    requests.cpu: '1'
+    requests.memory: 1Gi
+    requests.nvidia.com/gpu: 4
+    limits.cpu: '2'
+    limits.memory: 2Gi
+    pods: '2'
+    persistentvolumeclaims: '5'
+    requests.storage: 5Gi

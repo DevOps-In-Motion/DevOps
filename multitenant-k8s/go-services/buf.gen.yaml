@@ -1,0 +1,37 @@
+version: v1
+managed:
+  enabled: true
+  go_package_prefix:
+    default: github.com/devops-in-motion/saas-services/gen/go
+plugins:
+  # Go code generation
+  - plugin: buf.build/protocolbuffers/go
+    out: gen/go
+    opt:
+      - paths=source_relative
+  
+  # gRPC Go code generation
+  - plugin: buf.build/grpc/go
+    out: gen/go
+    opt:
+      - paths=source_relative
+  
+  # gRPC-Gateway (REST API) generation
+  - plugin: buf.build/grpc-ecosystem/gateway
+    out: gen/go
+    opt:
+      - paths=source_relative
+      - generate_unbound_methods=true
+  
+  # OpenAPI/Swagger documentation
+  - plugin: buf.build/grpc-ecosystem/openapiv2
+    out: gen/openapi
+    opt:
+      - allow_merge=true
+      - merge_file_name=api
+  
+  # Validation rules (optional but recommended)
+  - plugin: buf.build/bufbuild/validate-go
+    out: gen/go
+    opt:
+      - paths=source_relative

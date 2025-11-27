@@ -1,0 +1,23 @@
+# Cluster admin role - full cluster administrator privileges
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: cluster-admin
+rules:
+- apiGroups: ["", "*"] # "" indicates the core api group
+  resources: ["*"]
+  verbs: ["*"]
+---
+# Binding for cluster admin
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: cluster-admin-binding
+subjects:
+- kind: User
+  name: tenant-a-admin
+  apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: ClusterRole
+  name: cluster-admin
+  apiGroup: rbac.authorization.k8s.io

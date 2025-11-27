@@ -1,0 +1,17 @@
+apiVersion: karpenter.sh/v1alpha5
+kind: Provisioner
+metadata:
+  name: mcp-jobs
+spec:
+  requirements:
+    - key: karpenter.sh/capacity-type
+      operator: In
+      values: ["spot", "on-demand"]
+    - key: node.kubernetes.io/instance-type
+      operator: In
+      values: ["c6i.2xlarge", "c5.2xlarge"]
+  limits:
+    resources:
+      cpu: 1000
+  ttlSecondsAfterEmpty: 30 # Scale down after 30s idle
+  ttlSecondsUntilExpired: 604800 # Expire nodes after 7 days

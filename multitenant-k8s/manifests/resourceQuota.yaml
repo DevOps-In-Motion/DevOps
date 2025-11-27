@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: ${TENANT_NAME}-quota
+  namespace: ${TENANT_NAME}
+spec:
+  hard:
+    requests.cpu: "10" # ${TENANT_CPU}
+    requests.memory: 20Gi # ${TENANT_RAM}
+    limits.cpu: "20" # ${TENANT_CPU}
+    limits.memory: 40Gi # ${TENANT_RAM}
+    persistentvolumeclaims: "20"
+    services: "30"
+    count/deployments.apps: "25"
+    count/statefulsets.apps: "10"

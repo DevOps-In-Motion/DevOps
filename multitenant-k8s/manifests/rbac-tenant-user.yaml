@@ -1,0 +1,31 @@
+# Tenant user role
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: ${TENANT_NAME}
+  name: tenant-user
+rules:
+- apiGroups: ["", "apps", "batch"]
+  resources: ["pods", "services", "deployments", "jobs"]
+  verbs: ["get", "list", "watch", "create", "update", "patch"]
+- apiGroups: ["networking.k8s.io"]
+  resources: ["ingresses"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: [""]
+  resources: ["configmaps"]
+  verbs: ["get", "list", "watch", "create", "update", "patch"]
+---
+# Binding for tenant user
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: ${TENANT_NAME}-user-binding
+  namespace: ${TENANT_NAME}
+subjects:
+- kind: User
+  name: ${TENANT_NAME}-user
+  apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: Role
+  name: tenant-user
+  apiGroup: rbac.authorization.k8s.io

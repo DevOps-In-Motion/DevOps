@@ -1,0 +1,11 @@
+# Node that exposes mixed resource
+apiVersion: v1
+kind: Node
+metadata:
+  nvidia.com/gpu.count: 1 
+  nvidia.com/gpu.product: "A100-PCI-40GB"
+  nvidia.com/gpu.strategy: "mixed" 
+
+status:
+  allocatable:
+    nvidia.com/mig-1g.5gb: "7"

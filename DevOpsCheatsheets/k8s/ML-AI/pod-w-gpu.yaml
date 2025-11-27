@@ -1,0 +1,38 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "GPU Pod"
+  namespace: default
+  labels:
+    app: "GPU Pod"
+spec:
+  containers:
+  - name: GPU Pod
+    image: nvrc.io/nvidia/cuda:12.2.0-devel-ubuntu20.04
+    resources:
+      limits:
+        cpu: 200m
+        memory: 500Mi
+        nvidia.com/gpu: 1 # always be equal to the limits
+      requests:
+        cpu: 100m
+        memory: 200Mi
+    env:
+    - name: DB_HOST
+      valueFrom:
+        configMapKeyRef:
+          name: GPU Pod
+          key: DB_HOST
+    ports:
+    - containerPort:  80
+      name:  http
+    volumeMounts:
+    - name: localtime
+      mountPath: /etc/localtime
+  nodeSelector:
+    nvidia.com/gpu-product: "A100-PCI-40GB"
+  volumes:
+    - name: localtime
+      hostPath:
+        path: /usr/share/zoneinfo/Asia/Shanghai
+  restartPolicy: Always

@@ -1,0 +1,31 @@
+# Tenant viewer role
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: ${TENANT_NAME}
+  name: tenant-viewer
+rules:
+- apiGroups: ["", "apps", "batch"]
+  resources: ["pods", "services", "deployments", "jobs"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["networking.k8s.io"]
+  resources: ["ingresses"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: [""]
+  resources: ["configmaps", "secrets"]
+  verbs: ["get", "list", "watch"]
+---
+# Binding for tenant viewer
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: ${TENANT_NAME}-viewer-binding
+  namespace: ${TENANT_NAME}
+subjects:
+- kind: User
+  name: ${TENANT_NAME}-viewer
+  apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: Role
+  name: tenant-viewer
+  apiGroup: rbac.authorization.k8s.io

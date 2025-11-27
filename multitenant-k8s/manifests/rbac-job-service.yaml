@@ -1,0 +1,37 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: ${TENANT_NAME}-mcp-job-service
+rules:
+# Can create/delete jobs in any namespace
+- apiGroups: ["batch"]
+  resources: ["jobs"]
+  verbs: ["create", "delete", "get", "list", "watch"]
+
+# Can read pods (for logs and status)
+- apiGroups: [""]
+  resources: ["pods", "pods/log"]
+  verbs: ["get", "list", "watch"]
+
+# Can read namespaces (to verify they exist)
+- apiGroups: [""]
+  resources: ["namespaces"]
+  verbs: ["get", "list"]
+
+# CANNOT create namespaces or other resources
+# CANNOT access secrets or configmaps
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: ${TENANT_NAME}-mcp-job-service
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: ${TENANT_NAME}-mcp-job-service
+subjects:
+- kind: Group
+  name: ${TENANT_NAME}-mcp-job-services
+  apiGroup: rbac.authorization.k8s.io
