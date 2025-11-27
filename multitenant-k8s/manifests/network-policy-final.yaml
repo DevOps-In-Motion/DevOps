@@ -1,10 +1,11 @@
+---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
   name: tenant-isolation
   namespace: ${TENANT_NAME}
 spec:
-  podSelector: {}  # Applies to all pods in namespace
+  podSelector: {}
   policyTypes:
   - Ingress
   - Egress

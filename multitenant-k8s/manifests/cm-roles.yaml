@@ -5,20 +5,15 @@ metadata:
   namespace: kube-system
 data:
   mapRoles: |
-    # Account Provisioning Service
-    - rolearn: arn:aws:iam::123456789012:role/account-provisioner-task-role
+    - rolearn: ${AWS_ACCOUNT_PROVISIONER_ROLE_ARN}
       username: account-provisioner
       groups:
         - account-provisioners
-    
-    # MCP Job Service
-    - rolearn: arn:aws:iam::123456789012:role/mcp-job-service-task-role
+    - rolearn: ${AWS_MCP_JOB_SERVICE_ROLE_ARN}
       username: mcp-job-service
       groups:
         - mcp-job-services
-    
-    # Worker nodes
-    - rolearn: arn:aws:iam::123456789012:role/eks-node-role
+    - rolearn: ${AWS_EKS_NODE_ROLE_ARN}
       username: system:node:{{EC2PrivateDNSName}}
       groups:
         - system:bootstrappers

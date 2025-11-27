@@ -2,6 +2,8 @@
 scratch/
 scratch/*
 
+SECURITY-*.md
+
 # Environment variables and secrets
 .env
 .env.*

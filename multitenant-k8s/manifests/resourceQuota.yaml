@@ -1,3 +1,4 @@
+---
 apiVersion: v1
 kind: ResourceQuota
 metadata:
@@ -5,11 +6,11 @@ metadata:
   namespace: ${TENANT_NAME}
 spec:
   hard:
-    requests.cpu: "10" # ${TENANT_CPU}
-    requests.memory: 20Gi # ${TENANT_RAM}
-    limits.cpu: "20" # ${TENANT_CPU}
-    limits.memory: 40Gi # ${TENANT_RAM}
-    persistentvolumeclaims: "20"
-    services: "30"
-    count/deployments.apps: "25"
-    count/statefulsets.apps: "10"
+    requests.cpu: "${TENANT_CPU}"
+    requests.memory: "${TENANT_RAM}"
+    limits.cpu: "${TENANT_CPU_LIMIT}"
+    limits.memory: "${TENANT_RAM_LIMIT}"
+    persistentvolumeclaims: "${TENANT_PVC_LIMIT}"
+    services: "${TENANT_SERVICE_LIMIT}"
+    count/deployments.apps: "${TENANT_DEPLOYMENT_LIMIT}"
+    count/statefulsets.apps: "${TENANT_STATEFULSET_LIMIT}"

@@ -1,4 +1,4 @@
-# Tenant user role
+---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
@@ -15,11 +15,10 @@ rules:
   resources: ["configmaps"]
   verbs: ["get", "list", "watch", "create", "update", "patch"]
 ---
-# Binding for tenant user
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: ${TENANT_NAME}-user-binding
+  name: tenant-user-binding
   namespace: ${TENANT_NAME}
 subjects:
 - kind: User
