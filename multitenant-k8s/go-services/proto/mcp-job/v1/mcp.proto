@@ -1,0 +1,57 @@
+// ============================================================================
+// Proto definitions for MCP Server Services
+// ============================================================================
+
+syntax = "proto3";
+
+package mcpapi.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/devops-in-motion/saas-services/gen/mcp-job/v1;mcpjobv1";
+
+// ============================================================================
+// MCP Server Service
+// Manages ephemeral MCP pods for client jobs
+// ============================================================================
+
+service MCPServerService {
+  // Create a new MCP job (spins up ephemeral pod)
+  rpc PutJob(PutJobRequest) returns (PutJobResponse);
+  
+}
+
+// Job status
+enum ServerJobStatus {
+  SERVER_JOB_STATUS_UNSPECIFIED = 0;
+  SERVER_JOB_STATUS_PENDING = 1;
+  SERVER_JOB_STATUS_RUNNING = 2;
+  SERVER_JOB_STATUS_COMPLETED = 3;
+  SERVER_JOB_STATUS_FAILED = 4;
+  SERVER_JOB_STATUS_TIMEOUT = 5;
+  SERVER_JOB_STATUS_CANCELLED = 6;
+}
+
+// Create job request
+message PutJobRequest {
+  string organization_id = 1;
+  string job_type = 2;
+  string mcp_server = 3;
+  string prompt = 4;
+  map<string, string> parameters = 5;
+  int32 timeout_seconds = 6;
+  google.protobuf.Timestamp created_at = 7;
+  google.protobuf.Timestamp completed_at = 8;
+  string callback_url = 9;
+}
+
+// Create job response
+message PutJobResponse {
+  string job_id = 1;
+  string organization_id = 2;
+  ServerJobStatus status = 3;
+  string pod_name = 4;
+  string namespace = 5;
+  google.protobuf.Timestamp completed_at = 6;
+  int32 estimated_ttl_seconds = 7;
+}

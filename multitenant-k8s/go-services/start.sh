@@ -1,5 +1,5 @@
 # Generate all code (gRPC, Gateway, OpenAPI)
-buf generate
+buf generate --path proto
 
 # This creates:
 # - gen/go/saas/v1/*.pb.go
@@ -19,7 +19,16 @@ buf format -w
 go mod init github.com/devops-in-motion/saas-services
 
 # Add dependencies
-go get google.golang.org/grpc
-go get google.golang.org/protobuf
-go get github.com/grpc-ecosystem/grpc-gateway/v2
-go get github.com/bufbuild/connect-go
+# go get google.golang.org/grpc
+# go get google.golang.org/protobuf
+# go get github.com/grpc-ecosystem/grpc-gateway/v2
+# go get github.com/bufbuild/connect-go
+go install github.com/bufbuild/buf/cmd/buf@latest
+go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+go install connectrpc.com/connect/cmd/protoc-gen-connect-go@latest
+
+# You'll need buf, protoc-gen-go and protoc-gen-connect-go on your PATH. 
+# If which buf protoc-gen-go protoc-gen-connect-go doesn't succeed, 
+# add Go's install directories to your path:
+[ -n "$(go env GOBIN)" ] && export PATH="$(go env GOBIN):${PATH}"
+[ -n "$(go env GOPATH)" ] && export PATH="$(go env GOPATH)/bin:${PATH}"

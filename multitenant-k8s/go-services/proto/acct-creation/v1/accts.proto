@@ -1,14 +1,15 @@
 // ============================================================================
-// Proto definitions for Account Provisioning and MCP Job Services
+// Proto definitions for Account Provisioning and MCP Scheduler Services
 // ============================================================================
 
 syntax = "proto3";
 
-package saas.v1;
+package acctapi.v1;
 
 import "google/protobuf/timestamp.proto";
 
-option go_package = "github.com/devops-in-motion/saas-services/gen/go/saas/v1;saasv1";
+option go_package = "github.com/devops-in-motion/saas-services/gen/acct-creation/v1;acctcreationv1";
+// 
 
 // ============================================================================
 // Account Provisioning Service
@@ -148,142 +149,4 @@ message ListAccountsResponse {
   repeated GetAccountResponse accounts = 1;
   string next_page_token = 2;
   int32 total_count = 3;
-}
-
-// ============================================================================
-// MCP Job Service
-// Manages ephemeral MCP pods for client jobs
-// ============================================================================
-
-service MCPJobService {
-  // Create a new MCP job (spins up ephemeral pod)
-  rpc CreateJob(CreateJobRequest) returns (CreateJobResponse);
-
-  // Get job status and results
-  rpc GetJob(GetJobRequest) returns (GetJobResponse);
-
-  // List jobs for an organization
-  rpc ListJobs(ListJobsRequest) returns (ListJobsResponse);
-
-  // Cancel a running job
-  rpc CancelJob(CancelJobRequest) returns (CancelJobResponse);
-
-  // Get job logs
-  rpc GetJobLogs(GetJobLogsRequest) returns (GetJobLogsResponse);
-}
-
-// Job status
-enum JobStatus {
-  JOB_STATUS_UNSPECIFIED = 0;
-  JOB_STATUS_PENDING = 1;
-  JOB_STATUS_RUNNING = 2;
-  JOB_STATUS_COMPLETED = 3;
-  JOB_STATUS_FAILED = 4;
-  JOB_STATUS_TIMEOUT = 5;
-  JOB_STATUS_CANCELLED = 6;
-}
-
-// Create job request
-message CreateJobRequest {
-  string organization_id = 1;
-  string job_type = 2;
-  string prompt = 3;
-  map<string, string> parameters = 4;
-  int32 timeout_seconds = 5;
-  string callback_url = 6;
-}
-
-// Create job response
-message CreateJobResponse {
-  string job_id = 1;
-  string organization_id = 2;
-  JobStatus status = 3;
-  string pod_name = 4;
-  string namespace = 5;
-  google.protobuf.Timestamp created_at = 6;
-  int32 estimated_ttl_seconds = 7;
-}
-
-// Get job request
-message GetJobRequest {
-  string job_id = 1;
-}
-
-// Get job response
-message GetJobResponse {
-  string job_id = 1;
-  string organization_id = 2;
-  string namespace = 3;
-  string job_type = 4;
-  string prompt = 5;
-  map<string, string> parameters = 6;
-  JobStatus status = 7;
-  string pod_name = 8;
-  map<string, string> result = 9;
-  string error = 10;
-  google.protobuf.Timestamp started_at = 11;
-  google.protobuf.Timestamp completed_at = 12;
-  google.protobuf.Timestamp created_at = 13;
-  double duration_seconds = 14;
-}
-
-// List jobs request
-message ListJobsRequest {
-  string organization_id = 1;
-  JobStatus status_filter = 2;
-  int32 page_size = 3;
-  string page_token = 4;
-}
-
-// List jobs response
-message ListJobsResponse {
-  repeated GetJobResponse jobs = 1;
-  string next_page_token = 2;
-  int32 total_count = 3;
-}
-
-// Cancel job request
-message CancelJobRequest {
-  string job_id = 1;
-}
-
-// Cancel job response
-message CancelJobResponse {
-  string job_id = 1;
-  JobStatus status = 2;
-  google.protobuf.Timestamp cancelled_at = 3;
-}
-
-// Get job logs request
-message GetJobLogsRequest {
-  string job_id = 1;
-  int32 tail_lines = 2;
-}
-
-// Get job logs response
-message GetJobLogsResponse {
-  string job_id = 1;
-  string logs = 2;
-  google.protobuf.Timestamp retrieved_at = 3;
-}
-
-// ============================================================================
-// Health Check
-// ============================================================================
-
-service HealthService {
-  rpc Check(CheckRequest) returns (CheckResponse);
-}
-
-message CheckRequest {
-  string service = 1;
-}
-
-message CheckResponse {
-  enum ServingStatus {
-    SERVING_STATUS_UNSPECIFIED = 0;
-    SERVING_STATUS_SERVING = 1;
-    SERVING_STATUS_NOT_SERVING = 2;
-  }
-  ServingStatus status = 1;
 }
