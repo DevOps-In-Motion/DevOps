@@ -16,7 +16,7 @@ buf format -w
 
 
 # Initialize Go module
-go mod init github.com/devops-in-motion/saas-services
+go mod init github.com/DevOps-In-Motion/DevOps/multitenant-k8s/go-services
 
 # Add dependencies
 # go get google.golang.org/grpc
@@ -32,3 +32,28 @@ go install connectrpc.com/connect/cmd/protoc-gen-connect-go@latest
 # add Go's install directories to your path:
 [ -n "$(go env GOBIN)" ] && export PATH="$(go env GOBIN):${PATH}"
 [ -n "$(go env GOPATH)" ] && export PATH="$(go env GOPATH)/bin:${PATH}"
+
+
+
+
+### --- Project Structure --- ###
+
+mkdir -p cmd/account-server
+mkdir -p cmd/scheduler-server
+mkdir -p cmd/client-example
+mkdir -p pkg/accountservice
+mkdir -p pkg/schedulerservice
+mkdir -p pkg/storage
+mkdir -p internal/config
+mkdir -p internal/middleware
+
+### --- Issues --- ###
+# clean after new installs .
+go clean -modcache
+
+# Re-Generate
+rm -rf gen/
+
+# Regenerate with new import paths
+buf generate
+go mod tidy

@@ -2,3 +2,26 @@ gen/
 *.pb.go
 *.pb.gw.go
 *.swagger.json
+
+/gen/
+*.pb.go
+*_grpc.pb.go
+*.connect.go
+
+# Binaries
+*.exe
+*.dll
+*.so
+*.dylib
+/bin/
+/dist/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+
+# Don't ignore go.mod or go.sum - commit them!

@@ -8,11 +8,11 @@ package acctapi.v1;
 
 import "google/protobuf/timestamp.proto";
 
-option go_package = "github.com/devops-in-motion/saas-services/gen/acct-creation/v1;acctcreationv1";
+option go_package = "github.com/DevOps-In-Motion/DevOps/multitenant-k8s/go-services/gen/proto/acct-management/v1;acctmanagementv1";
 // 
 
 // ============================================================================
-// Account Provisioning Service
+// Account Management Service
 // Creates tenant infrastructure by calling K8s API directly:
 // - Namespace
 // - NetworkPolicy (tenant-isolation)
@@ -150,3 +150,4 @@ message ListAccountsResponse {
   string next_page_token = 2;
   int32 total_count = 3;
 }
+

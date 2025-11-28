@@ -5,7 +5,7 @@ syntax = "proto3";
 package schedulerapi.v1;
 import "google/protobuf/timestamp.proto";
 
-option go_package = "github.com/devops-in-motion/saas-services/gen/mcp-scheduler/v1;mcpschedulerv1";
+option go_package = "github.com/DevOps-In-Motion/DevOps/multitenant-k8s/go-services/gen/proto/mcp-scheduler/v1;mcpschedulerv1";
 
 // import "buf/validate/validate.proto";
 

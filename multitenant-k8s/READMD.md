@@ -1,127 +1,136 @@
 # Multi-Tenant Kubernetes Platform
 
-This directory contains a reference implementation for automating multi-tenant namespace provisioning as a service on Kubernetes. This project demonstrates how to build a SaaS platform where each customer (tenant) gets isolated namespaces with network and resource separation, suitable for a 3-tier web application architecture.
+This repository contains a reference solution for automating multi-tenant SaaS infrastructure in Kubernetes. It enables you to provision and manage fully isolated tenant environments—using namespaces, node pools, or clusters—complete with network and resource separation. The platform is designed for 3-tier and other modern cloud-native SaaS architectures.
 
 ## Overview
 
-This project provides a complete automation framework for provisioning and managing tenant namespaces in Kubernetes. It includes:
+This project is a complete automation stack for the lifecycle of SaaS tenancy on Kubernetes, featuring:
 
-- **Automated namespace provisioning** with RBAC, network policies, and resource quotas
-- **gRPC-based microservices** for account management and job execution
-- **Multi-tier isolation** (namespace, node pool, or cluster-level)
-- **AWS integration** with IRSA (IAM Roles for Service Accounts) for secure cloud resource access
-- **Ephemeral job execution** for tenant workloads
+- **Automated namespace and tenant infrastructure provisioning** (RBAC, network policy, quotas, etc.)
+- **Modular gRPC microservices** for account creation, multi-cluster job scheduling, distributed locking, rate limiting, and health checks
+- **Multi-level isolation:** support for namespace, node pool, or dedicated cluster per tenant
+- **AWS EKS integration** with IRSA for tenant-scoped cloud access (e.g., IAM, S3)
+- **Ephemeral workload management** and pluggable job runners
+- **OpenAPI documentation and pluggable frontends**
 
 ## Architecture
 
-The platform consists of two main services:
+The core platform services are organized in `go-services/` and defined via protocol buffers. Current microservices include:
 
-1. **Account Provisioning Service** (`go-services/account-provisioning/`)
-   - Creates and manages tenant namespaces
-   - Provisions RBAC roles, network policies, resource quotas
-   - Manages AWS IAM roles and S3 prefixes
-   - Supports plan tiers (Free, Starter, Pro, Enterprise)
+1. **Account Provisioning Service** (`go-services/proto/acct-creation/v1/accts.proto`)
+   - Automates namespace/infra creation (RBAC, quotas, etc.)
+   - Manages AWS IAM roles, S3 prefixes per org
+   - Supports tiered plans (Free → Enterprise)
 
-2. **MCP Job Service** (`go-services/mcp-job-service/`)
-   - Manages ephemeral pods for tenant job execution
-   - Handles job lifecycle (create, monitor, cancel)
-   - Provides job logs and status tracking
+2. **MCP Job Service** (`go-services/proto/mcp-scheduler/v1/scheduler.proto`)
+   - Schedules and manages ephemeral pods for tenant jobs
+   - Job lifecycle: create, monitor, cancel, logs
 
+3. **MCP Server Service** (`go-services/proto/mcp-job/v1/mcp.proto`)
+   - Reference backend for direct job execution
 
+4. **Distributed Lock Service**
+   - Provides distributed locking for concurrency control
+
+5. **Throttle State Service**
+   - Rate limiting and throttle management per tenant
+
+6. **Health Service**
+   - Health checking for platform services
+
+Each service exposes strict, versioned protobuf APIs for backend and frontend consumption.
 
 ## Cluster Personas
 
-The platform defines four distinct personas with different access levels:
+The platform implements multiple personas for proper separation of concerns:
 
-### Cluster Administrator - DevOps and IT
-- Full cluster-wide access
-- Manages the provisioning services
-- Can create and delete tenant namespaces
-- Manages cluster-level resources
+- **Cluster Administrator**
+  - Full cluster access; manages platform deployment and lifecycle.
+  - Provisions infra and global resources.
 
-### Tenant Administrator - 
-- Full control within their tenant namespace
-- Can deploy and manage applications
-- Manages RBAC for tenant users
-- Configure network policies (within tenant scope)
+- **Tenant Administrator**
+  - Full access within own namespace.
+  - Deploys apps, manages RBAC, and updates policies inside the tenant scope.
 
-### Tenant Users - MCP Job Service, Acct Manager
-- Standard users within tenant namespace
-- Can deploy and manage workloads
-- Limited to their organization's namespace
-- Subject to resource quotas
+- **Tenant User**
+  - Standard role in the organization.
+  - Can run jobs, deploy workloads, operate in own namespace, subject to quotas.
 
-### Tenant Viewers - Other resources
-- Read-only access to tenant namespace
-- Can view resources and logs
-- Cannot modify or create resources
+- **Tenant Viewer**
+  - Read-only access to resources and logs in the tenant namespace.
 
 ## Key Features
 
 ### Multi-Tier Isolation
-- **Namespace-level**: Standard isolation (default)
-- **Node Pool-level**: Dedicated node pools for enterprise customers
-- **Cluster-level**: Dedicated clusters for regulated industries
+- **Namespace-level:** Standard (default)
+- **Node Pool-level:** Dedicated pools for select tenants
+- **Cluster-level:** Dedicated clusters for regulated/large customers
 
 ### Resource Management
-- Automatic resource quota assignment based on plan tier
-- CPU and memory limits per tenant
-- Limits on PVCs, services, deployments, and statefulsets
-- Horizontal Pod Autoscaling support
+- Automatic quotas (CPU, memory, PVCs, services, etc.) based on plan tier
+- HPA and scaling hooks per tenant
 
 ### Network Isolation
-- Network policies enforcing tenant isolation
-- Pod-to-pod communication restrictions
-- Egress controls for external access
+- Strong network policy enforcement and egress control
+- Multi-tenant pod communication strictly limited
+- Kubernetes NetworkPolicy support
 
-### AWS Integration
-- IRSA (IAM Roles for Service Accounts) for secure AWS access
-- Automatic IAM role creation per tenant
-- S3 prefix isolation for tenant data
-- ECS task execution policies
+### AWS & Cloud Integration
+- Secure IRSA for external cloud access
+- Auto IAM/S3 isolation and resource mapping
 
-### Job Execution
-- Ephemeral pod creation for tenant workloads
-- Job lifecycle management (create, monitor, cancel)
-- Log aggregation and retrieval
+### Ephemeral Job Execution
+- Spin up pods for isolated tenant workloads
+- Job state tracking and log retrieval
 - Callback webhook support
+
+### Distributed Coordination & Throttling
+- Distributed locks prevent race conditions during provisioning or job start
+- Tenant-aware rate limiting and circuit breaking
 
 ## Usage
 
 ### Prerequisites
-- Kubernetes cluster (1.24+)
-- Go 1.25+
-- Buf CLI for protocol buffer code generation
-- AWS EKS (for IRSA support)
+
+- Kubernetes cluster (v1.24+ recommended)
+- Go 1.22+ (or higher)
+- [Buf](https://buf.build/) CLI for proto codegen
+- AWS EKS (for IRSA features, optional)
 
 ### Building Services
 
 ```bash
 cd go-services
-./start.sh  # Generates gRPC code and builds services
+./start.sh  # Generates protobufs and builds Go services
 ```
 
 ### Deploying Manifests
 
-The manifests in `manifests/` use environment variable substitution (e.g., `${TENANT_NAME}`). Apply them with your tenant-specific values:
+Deploy manifests with your desired variables using environment substitution (the system expects variables such as `${TENANT_NAME}`):
 
 ```bash
-export TENANT_NAME=customer123
+export TENANT_NAME=my-tenant
 envsubst < manifests/namespace.yaml | kubectl apply -f -
 ```
 
-### API Examples
+### API Usage Examples
 
-See `api/example-calls.js` for example API calls to:
-- Create a new tenant account
-- Submit MCP jobs for execution
+See `api/example-calls.js` and the generated OpenAPI docs for example:
 
-## Service Definitions
+- Creating and managing tenant accounts
+- Submitting jobs for execution
+- Monitoring job status and logs
 
-The platform uses gRPC services defined in `go-services/saas/v1/services.proto`:
+## Service APIs
 
-- **AccountProvisioningService**: CRUD operations for tenant accounts
-- **MCPJobService**: Job lifecycle management
-- **HealthService**: Health check endpoints
+gRPC service definitions can be found under `go-services/proto/`. Main APIs:
 
-All services use mTLS for secure communication and are designed to be deployed as Kubernetes services.
+- **AccountProvisioningService**: Organization/tenant lifecycle management
+- **MCPJobService**: Multi-tenant job scheduling and lifecycle
+- **DistributedLockService**: Distributed lock APIs
+- **ThrottleStateService**: Rate limiting and quota checks
+- **HealthService**: Probes for availability
+
+All services are designed for secure deployment on Kubernetes with mTLS support. APIs are documented via OpenAPI (generated in `gen/openapi/`).
+
+For more on project structure, microservice details, and API schemas, see the respective proto files and code documentation.

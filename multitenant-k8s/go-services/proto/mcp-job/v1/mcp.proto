@@ -8,7 +8,7 @@ package mcpapi.v1;
 
 import "google/protobuf/timestamp.proto";
 
-option go_package = "github.com/devops-in-motion/saas-services/gen/mcp-job/v1;mcpjobv1";
+option go_package = "github.com/DevOps-In-Motion/DevOps/multitenant-k8s/go-services/gen/proto/mcp-job/v1;mcpjobv1";
 
 // ============================================================================
 // MCP Server Service
