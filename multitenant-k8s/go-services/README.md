@@ -105,10 +105,31 @@ Services require:
 - Kubernetes cluster access (via ServiceAccount or kubeconfig)
 - AWS credentials (for IAM role and S3 management)
 
-## Deployment
+## Tenants
 
 Services are designed to run as Kubernetes deployments with:
 - ServiceAccounts bound to appropriate RBAC roles
 - Network policies restricting communication
 - Resource limits and quotas
 - Horizontal Pod Autoscaling support
+
+
+## Architecture 
+
+┌───────────────┐
+│ Job Scheduler │
+└──────┬────────┘
+       │
+       ▼
+┌─────────────┐    ┌──────────────────┐    ┌─────────────────┐
+│   Kafka     │───▶│  KEDA Scaler     │───▶│   K8s Job API   │
+│   Topic     │    │  (Watches lag)   │    └─────────────────┘
+└─────────────┘    └──────────────────┘             │
+                                                    ▼
+                                            ┌─────────────────┐
+                                            │  MCP Job Pods   │
+                                            │  - Read Kafka   │
+                                            │  - Connect SSE  │
+                                            │  - Run tools    │
+                                            │  - Exit         │
+                                            └─────────────────┘
