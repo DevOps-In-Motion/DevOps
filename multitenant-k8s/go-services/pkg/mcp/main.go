@@ -8,28 +8,95 @@ import (
 	"os"
 	"strings"
 
+	"github.com/modelcontextprotocol/go-sdk/mcp"
+
 	"github.com/DevOps-In-Motion/DevOps/multitenant-k8s/go-services/pkg/schedulerservice"
 	"github.com/segmentio/kafka-go"
 )
 
-// AutomationRunner defines how an MCP server executes a scheduled automation
-// from the JSON payload produced by the scheduler.
+// ExampleMCPServersConfigJSON demonstrates an example configuration for a MariaDB MCP server process.
+// This is the expected JSON structure:
+//
+// {
+//   "mcpServers": {
+//     "MariaDB_Server": {
+//       "command": "uv",
+//       "args": [
+//         "--directory",
+//         "path/to/mariadb-mcp-server/",
+//         "run",
+//         "server.py"
+//       ],
+//       "envFile": "path/to/mcp-server-mariadb-vector/.env"
+//     }
+//   }
+// }
+
+type MCPServersConfig struct {
+	MCPServers map[string]MCPServerDetails `json:"mcpServers"`
+}
+
+type MCPServerDetails struct {
+	Command string   `json:"command"`
+	Args    []string `json:"args"`
+	EnvFile string   `json:"envFile"`
+}
+
+type ServerInitializeArgs struct {
+	ServerName string           `json:"serverName" jsonschema:"required,description=Name of the MCP server to initialize"`
+	Config     MCPServersConfig `json:"config" jsonschema:"required,description=MCP server configuration"`
+}
+
+type ServerInitializeOutput struct {
+	ServerDetails MCPServerDetails `json:"serverDetails" jsonschema:"description=Configuration details for the initialized server"`
+	Status        string           `json:"status" jsonschema:"description=Initialization status"`
+}
+
+func handleServerInitialize(
+	ctx context.Context,
+	req *mcp.CallToolRequest,
+	args ServerInitializeArgs,
+) (*mcp.CallToolResult, ServerInitializeOutput, error) {
+	if len(args.Config.MCPServers) == 0 {
+		return nil, ServerInitializeOutput{}, fmt.Errorf("no MCP servers found in configuration")
+	}
+
+	serverDetails, exists := args.Config.MCPServers[args.ServerName]
+	if !exists {
+		return nil, ServerInitializeOutput{}, fmt.Errorf("server %s not found in configuration", args.ServerName)
+	}
+
+	output := ServerInitializeOutput{
+		ServerDetails: serverDetails,
+		Status:        "initialized",
+	}
+
+	return nil, output, nil
+}
+
+func CreateMCPServer(name, version string) *mcp.Server {
+	return mcp.NewServer(&mcp.Implementation{
+		Name:    name,
+		Version: version,
+	}, nil)
+}
+
+func RegisterServerTools(server *mcp.Server) {
+	mcp.AddTool(server, &mcp.Tool{
+		Name:        "server_initialize",
+		Description: "Initialize an MCP server configuration from Kafka message",
+	}, handleServerInitialize)
+}
+
 type AutomationRunner interface {
 	Run(ctx context.Context, env *schedulerservice.ScheduledJobEnvelope) error
 }
 
-// MCPWorker is a Kafka consumer that reads scheduled jobs and
-// dispatches them to an AutomationRunner (your MCP automation server).
 type MCPWorker struct {
 	reader *kafka.Reader
 	runner AutomationRunner
 }
 
-// NewMCPWorkerFromEnv wires an MCPWorker using environment variables:
-//
-//	KAFKA_BROKERS       - comma-separated list of brokers (host:port)
-//	KAFKA_TOPIC         - topic name for MCP jobs
-//	MCP_CONSUMER_GROUP  - Kafka consumer group ID for the MCP workers
 func NewMCPWorkerFromEnv(runner AutomationRunner) (*MCPWorker, error) {
 	if runner == nil {
 		return nil, fmt.Errorf("runner must not be nil")
@@ -69,13 +136,16 @@ func NewMCPWorkerFromEnv(runner AutomationRunner) (*MCPWorker, error) {
 	}, nil
 }
 
-// Run starts the MCP worker consume loop. It blocks until ctx is canceled
-// or an unrecoverable error occurs.
 func (w *MCPWorker) Run(ctx context.Context) error {
 	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
+
 		msg, err := w.reader.ReadMessage(ctx)
 		if err != nil {
-			// Context cancellation is expected on shutdown.
 			if ctx.Err() != nil {
 				return ctx.Err()
 			}
@@ -90,8 +160,13 @@ func (w *MCPWorker) Run(ctx context.Context) error {
 
 		if err := w.runner.Run(ctx, &env); err != nil {
 			log.Printf("automation runner error for job %s: %v", env.JobID, err)
-			// You can add DLQ behavior here if desired.
 			continue
 		}
+
+		log.Printf("automation runner success for job %s", env.JobID)
 	}
+}
+
+func (w *MCPWorker) Close() error {
+	return w.reader.Close()
 }
