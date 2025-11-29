@@ -23,6 +23,15 @@ go mod init github.com/DevOps-In-Motion/DevOps/multitenant-k8s/go-services
 # go get google.golang.org/protobuf
 # go get github.com/grpc-ecosystem/grpc-gateway/v2
 # go get github.com/bufbuild/connect-go
+# AWS SDK v2
+go get github.com/aws/aws-sdk-go-v2/config
+go get github.com/aws/aws-sdk-go-v2/service/iam
+go get github.com/aws/aws-sdk-go-v2/service/s3
+
+# Kubernetes client-go
+go get k8s.io/client-go@latest
+go get k8s.io/api@latest
+go get k8s.io/apimachinery@latest
 go install github.com/bufbuild/buf/cmd/buf@latest
 go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
 go install connectrpc.com/connect/cmd/protoc-gen-connect-go@latest
