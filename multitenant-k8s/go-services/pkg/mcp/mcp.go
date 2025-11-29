@@ -58,7 +58,7 @@ func ProcessMessage(ctx context.Context, messageValue []byte) error {
 	}
 
 	var config MCPServersConfig
-	if err := json.Unmarshal([]byte(env.Payload), &config); err != nil {
+	if err := json.Unmarshal([]byte(env.Parameters["config"]), &config); err != nil {
 		return fmt.Errorf("failed to parse config: %w", err)
 	}
 

@@ -13,16 +13,6 @@ import (
 	"github.com/segmentio/kafka-go"
 )
 
-type MCPServersConfig struct {
-	MCPServers map[string]MCPServerDetails `json:"mcpServers"`
-}
-
-type MCPServerDetails struct {
-	Command string   `json:"command"`
-	Args    []string `json:"args"`
-	EnvFile string   `json:"envFile"`
-}
-
 // ProcessSingleMessage reads one message from Kafka, processes it, and exits
 func ProcessSingleMessage(ctx context.Context) error {
 	brokers := strings.Split(os.Getenv("KAFKA_BROKERS"), ",")
@@ -83,7 +73,7 @@ func ProcessSingleMessage(ctx context.Context) error {
 	for serverName, serverDetails := range config.MCPServers {
 		log.Printf("Initializing MCP server: %s", serverName)
 
-		if err := initializeServer(ctx, serverName, serverDetails); err != nil {
+		if err := initializeServer(ctx, serverName, serverDetails, config); err != nil {
 			// Don't commit - let Kafka retry
 			return fmt.Errorf("failed to initialize server %s: %w", serverName, err)
 		}
@@ -97,24 +87,5 @@ func ProcessSingleMessage(ctx context.Context) error {
 	}
 
 	log.Printf("Job %s completed successfully", env.JobID)
-	return nil
-}
-
-// initializeServer executes the MCP server initialization logic
-func initializeServer(ctx context.Context, serverName string, details MCPServerDetails) error {
-	log.Printf("Executing: %s %v", details.Command, details.Args)
-	log.Printf("Environment file: %s", details.EnvFile)
-
-	// TODO: Implement actual MCP server initialization
-	// This might involve:
-	// - Loading environment variables from EnvFile
-	// - Spawning the command with args
-	// - Waiting for initialization confirmation
-	// - Health checking the server
-	// - Returning success/failure
-
-	// For now, simulate work
-	time.Sleep(2 * time.Second)
-
 	return nil
 }
