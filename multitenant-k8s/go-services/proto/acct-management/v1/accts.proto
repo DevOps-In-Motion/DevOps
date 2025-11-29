@@ -82,11 +82,12 @@ message CreateAccountResponse {
   OrganizationType organization_type = 3;
   PlanTier plan_tier = 4;
   string iam_role_arn = 5;
-  string s3_prefix = 6;
-  ResourceQuota resource_quota = 7;
-  string status = 8;
-  google.protobuf.Timestamp created_at = 9;
-  double provisioning_time_seconds = 10;
+  string s3_bucket = 6;
+  string s3_prefix = 7;
+  ResourceQuota resource_quota = 8;
+  string status = 9;
+  google.protobuf.Timestamp created_at = 10;
+  double provisioning_time_seconds = 11;
 }
 
 // Get account request
