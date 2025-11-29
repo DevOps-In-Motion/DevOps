@@ -1,0 +1,53 @@
+FROM golang:1.23-alpine AS builder
+
+WORKDIR /app
+
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY . .
+
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo \
+    -ldflags '-w -s' \
+    -o mcp-job ./cmd/mcp-job
+
+FROM alpine:latest
+
+RUN apk --no-cache add ca-certificates tzdata
+
+WORKDIR /app
+
+COPY --from=builder /app/mcp-job .
+
+USER nobody:nobody
+
+ENTRYPOINT ["./mcp-job"]
+```
+
+## How It Works
+
+### Idle State (No Messages)
+```
+Kafka: 0 messages
+KEDA: Scales to 0 jobs
+K8s: 0 pods running
+Cost: $0
+```
+
+### Messages Arrive
+```
+Kafka: 50 messages arrive
+KEDA: Detects lag of 50
+KEDA: Creates 50 K8s Jobs
+K8s: Spawns 50 pods
+Each pod: Grabs 1 message, processes, commits, exits
+Duration: ~30 seconds
+```
+
+### Back to Idle
+```
+Kafka: All messages processed
+KEDA: Detects lag of 0
+KEDA: Stops creating new jobs
+K8s: Cleans up completed jobs
+Cost: Back to $0

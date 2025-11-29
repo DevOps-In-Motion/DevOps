@@ -1,0 +1,11 @@
+# ServiceMonitor for KEDA
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: keda-metrics
+spec:
+  selector:
+    matchLabels:
+      app: keda-operator
+  endpoints:
+  - port: metrics
