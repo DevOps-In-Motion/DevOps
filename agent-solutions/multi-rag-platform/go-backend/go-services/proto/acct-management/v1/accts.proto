@@ -1,0 +1,153 @@
+// ============================================================================
+// Proto definitions for Account Provisioning and MCP Scheduler Services
+// ============================================================================
+
+syntax = "proto3";
+
+package acctapi.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/DevOps-In-Motion/DevOps/multitenant-k8s/go-services/gen/proto/acct-management/v1;acctmanagementv1";
+// 
+
+// ============================================================================
+// Account Management Service
+// Creates tenant infrastructure by calling K8s API directly:
+// - Namespace
+// - NetworkPolicy (tenant-isolation)
+// - ResourceQuota
+// - RBAC (admin, user, viewer roles)
+// - ServiceAccount
+// ============================================================================
+
+service AccountProvisioningService {
+  // Create a new organization account with K8s infrastructure
+  rpc CreateAccount(CreateAccountRequest) returns (CreateAccountResponse);
+
+  // Get organization details
+  rpc GetAccount(GetAccountRequest) returns (GetAccountResponse);
+
+  // Update organization (plan upgrade/downgrade, etc.)
+  rpc UpdateAccount(UpdateAccountRequest) returns (UpdateAccountResponse);
+
+  // Delete organization and cleanup resources
+  rpc DeleteAccount(DeleteAccountRequest) returns (DeleteAccountResponse);
+
+  // List all organizations
+  rpc ListAccounts(ListAccountsRequest) returns (ListAccountsResponse);
+}
+
+// Organization isolation type
+enum OrganizationType {
+  ORGANIZATION_TYPE_UNSPECIFIED = 0;
+  ORGANIZATION_TYPE_NAMESPACE = 1; // Namespace-level isolation (standard)
+  ORGANIZATION_TYPE_NODE = 2; // Dedicated node pool (enterprise)
+  ORGANIZATION_TYPE_CLUSTER = 3; // Dedicated cluster (regulated)
+}
+
+// Plan tier
+enum PlanTier {
+  PLAN_TIER_UNSPECIFIED = 0;
+  PLAN_TIER_FREE = 1;
+  PLAN_TIER_STARTER = 2;
+  PLAN_TIER_PRO = 3;
+  PLAN_TIER_ENTERPRISE = 4;
+}
+
+// Resource quota for an organization
+message ResourceQuota {
+  string requests_cpu = 1; // e.g., "10"
+  string requests_memory = 2; // e.g., "20Gi"
+  string limits_cpu = 3; // e.g., "20"
+  string limits_memory = 4; // e.g., "40Gi"
+  int32 max_pvcs = 5; // persistentvolumeclaims
+  int32 max_services = 6;
+  int32 max_deployments = 7;
+  int32 max_statefulsets = 8;
+}
+
+// Create account request
+message CreateAccountRequest {
+  string organization_id = 1;
+  OrganizationType organization_type = 2;
+  PlanTier plan_tier = 3;
+  string s3_bucket = 4; // Optional, uses default if empty
+}
+
+// Create account response
+message CreateAccountResponse {
+  string organization_id = 1;
+  string namespace = 2;
+  OrganizationType organization_type = 3;
+  PlanTier plan_tier = 4;
+  string iam_role_arn = 5;
+  string s3_prefix = 6;
+  ResourceQuota resource_quota = 7;
+  string status = 8;
+  google.protobuf.Timestamp created_at = 9;
+  double provisioning_time_seconds = 10;
+}
+
+// Get account request
+message GetAccountRequest {
+  string organization_id = 1;
+}
+
+// Get account response
+message GetAccountResponse {
+  string organization_id = 1;
+  string namespace = 2;
+  string node_pool = 3;
+  OrganizationType organization_type = 4;
+  PlanTier plan_tier = 5;
+  string iam_role_arn = 6;
+  string s3_bucket = 7;
+  string s3_prefix = 8;
+  ResourceQuota resource_quota = 9;
+  string status = 10;
+  google.protobuf.Timestamp created_at = 11;
+  google.protobuf.Timestamp updated_at = 12;
+}
+
+// Update account request
+message UpdateAccountRequest {
+  string organization_id = 1;
+  PlanTier plan_tier = 2;
+  OrganizationType organization_type = 3;
+}
+
+// Update account response
+message UpdateAccountResponse {
+  string organization_id = 1;
+  PlanTier plan_tier = 2;
+  ResourceQuota resource_quota = 3;
+  google.protobuf.Timestamp updated_at = 4;
+}
+
+// Delete account request
+message DeleteAccountRequest {
+  string organization_id = 1;
+}
+
+// Delete account response
+message DeleteAccountResponse {
+  string organization_id = 1;
+  string status = 2;
+  google.protobuf.Timestamp deleted_at = 3;
+}
+
+// List accounts request
+message ListAccountsRequest {
+  int32 page_size = 1;
+  string page_token = 2;
+  string status_filter = 3;
+}
+
+// List accounts response
+message ListAccountsResponse {
+  repeated GetAccountResponse accounts = 1;
+  string next_page_token = 2;
+  int32 total_count = 3;
+}
+

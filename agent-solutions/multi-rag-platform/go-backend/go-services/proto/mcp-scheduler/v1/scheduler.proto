@@ -1,0 +1,321 @@
+// ============================================================================
+// Proto definitions for Account Provisioning and MCP Scheduler Services
+// ============================================================================
+syntax = "proto3";
+package schedulerapi.v1;
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/DevOps-In-Motion/DevOps/multitenant-k8s/go-services/gen/proto/mcp-scheduler/v1;mcpschedulerv1";
+
+// import "buf/validate/validate.proto";
+
+// ============================================================================
+// MCP Scheduler Service
+// Manages ephemeral MCP pods for client jobs
+// ============================================================================
+service MCPJobService {
+  // Create a new MCP job (spins up ephemeral pod)
+  rpc CreateJob(CreateJobRequest) returns (CreateJobResponse);
+  
+  // Get job status and results
+  rpc GetJob(GetJobRequest) returns (GetJobResponse);
+  
+  // List jobs for an organization
+  rpc ListJobs(ListJobsRequest) returns (ListJobsResponse);
+  
+  // Cancel a running job
+  rpc CancelJob(CancelJobRequest) returns (CancelJobResponse);
+  
+  // Get job logs
+  rpc GetJobLogs(GetJobLogsRequest) returns (GetJobLogsResponse);
+}
+
+// ============================================================================
+// Distributed Lock Service
+// Manages distributed locks to prevent concurrent job requests
+// ============================================================================
+service DistributedLockService {
+  // Acquire a lock for a specific resource
+  rpc AcquireLock(AcquireLockRequest) returns (AcquireLockResponse);
+  
+  // Release a previously acquired lock
+  rpc ReleaseLock(ReleaseLockRequest) returns (ReleaseLockResponse);
+  
+  // Refresh/extend the TTL of an existing lock
+  rpc RefreshLock(RefreshLockRequest) returns (RefreshLockResponse);
+  
+  // Check if a lock exists for a resource
+  rpc CheckLock(CheckLockRequest) returns (CheckLockResponse);
+}
+
+// Acquire lock request
+message AcquireLockRequest {
+  string resource_key = 1;        // Unique identifier for the resource (e.g., "job:org_id:job_type")
+  string owner_id = 2;            // Identifier of the lock owner
+  int32 ttl_seconds = 3;          // Lock time-to-live in seconds
+  bool wait_for_lock = 4;         // If true, wait for lock to become available
+  int32 wait_timeout_seconds = 5; // Max time to wait if wait_for_lock is true
+}
+
+// Acquire lock response
+message AcquireLockResponse {
+  bool acquired = 1;              // Whether the lock was successfully acquired
+  string lock_id = 2;             // Unique lock identifier (used for release/refresh)
+  google.protobuf.Timestamp expires_at = 3;
+  string existing_owner_id = 4;   // If lock not acquired, who owns it
+}
+
+// Release lock request
+message ReleaseLockRequest {
+  string lock_id = 1;             // Lock identifier from AcquireLockResponse
+  string owner_id = 2;            // Must match the original owner
+}
+
+// Release lock response
+message ReleaseLockResponse {
+  bool released = 1;              // Whether the lock was successfully released
+  string error = 2;               // Error message if release failed
+}
+
+// Refresh lock request
+message RefreshLockRequest {
+  string lock_id = 1;             // Lock identifier to refresh
+  string owner_id = 2;            // Must match the original owner
+  int32 additional_ttl_seconds = 3; // Additional TTL to add
+}
+
+// Refresh lock response
+message RefreshLockResponse {
+  bool refreshed = 1;             // Whether the lock was successfully refreshed
+  google.protobuf.Timestamp new_expires_at = 2;
+  string error = 3;               // Error message if refresh failed
+}
+
+// Check lock request
+message CheckLockRequest {
+  string resource_key = 1;        // Resource to check
+}
+
+// Check lock response
+message CheckLockResponse {
+  bool locked = 1;                // Whether the resource is currently locked
+  string owner_id = 2;            // Current lock owner
+  google.protobuf.Timestamp expires_at = 3;
+}
+
+// ============================================================================
+// Throttle State Service
+// Manages rate limiting and throttle state for organizations
+// ============================================================================
+service ThrottleStateService {
+  // Check if an organization is throttled
+  rpc CheckThrottle(CheckThrottleRequest) returns (CheckThrottleResponse);
+  
+  // Record a job request (increments counters)
+  rpc RecordRequest(RecordRequestRequest) returns (RecordRequestResponse);
+  
+  // Get current throttle state for an organization
+  rpc GetThrottleState(GetThrottleStateRequest) returns (GetThrottleStateResponse);
+  
+  // Reset throttle state for an organization
+  rpc ResetThrottle(ResetThrottleRequest) returns (ResetThrottleResponse);
+  
+  // Update throttle limits for an organization
+  rpc UpdateThrottleLimits(UpdateThrottleLimitsRequest) returns (UpdateThrottleLimitsResponse);
+}
+
+// Check throttle request
+message CheckThrottleRequest {
+  string organization_id = 1;
+  string job_type = 2;            // Optional: check throttle for specific job type
+}
+
+// Check throttle response
+message CheckThrottleResponse {
+  bool throttled = 1;             // Whether the organization is currently throttled
+  string reason = 2;              // Reason for throttling (e.g., "rate_limit_exceeded")
+  int32 requests_remaining = 3;   // Requests remaining in current window
+  google.protobuf.Timestamp reset_at = 4; // When the throttle will reset
+  int32 retry_after_seconds = 5;  // Suggested retry delay
+}
+
+// Record request request
+message RecordRequestRequest {
+  string organization_id = 1;
+  string job_type = 2;
+  int32 cost = 3;                 // Cost/weight of this request (default: 1)
+}
+
+// Record request response
+message RecordRequestResponse {
+  bool recorded = 1;
+  int32 current_count = 2;        // Current request count in window
+  int32 limit = 3;                // Maximum allowed requests
+  google.protobuf.Timestamp window_reset_at = 4;
+}
+
+// Get throttle state request
+message GetThrottleStateRequest {
+  string organization_id = 1;
+}
+
+// Get throttle state response
+message GetThrottleStateResponse {
+  string organization_id = 1;
+  int32 requests_per_minute = 2;
+  int32 requests_per_hour = 3;
+  int32 concurrent_jobs_limit = 4;
+  int32 current_requests_minute = 5;
+  int32 current_requests_hour = 6;
+  int32 current_concurrent_jobs = 7;
+  google.protobuf.Timestamp minute_window_reset = 8;
+  google.protobuf.Timestamp hour_window_reset = 9;
+  bool is_throttled = 10;
+}
+
+// Reset throttle request
+message ResetThrottleRequest {
+  string organization_id = 1;
+  bool reset_minute_window = 2;
+  bool reset_hour_window = 3;
+  bool reset_concurrent_count = 4;
+}
+
+// Reset throttle response
+message ResetThrottleResponse {
+  bool reset = 1;
+  GetThrottleStateResponse new_state = 2;
+}
+
+// Update throttle limits request
+message UpdateThrottleLimitsRequest {
+  string organization_id = 1;
+  optional int32 requests_per_minute = 2;
+  optional int32 requests_per_hour = 3;
+  optional int32 concurrent_jobs_limit = 4;
+}
+
+// Update throttle limits response
+message UpdateThrottleLimitsResponse {
+  bool updated = 1;
+  GetThrottleStateResponse new_state = 2;
+}
+
+// ============================================================================
+// Job Status and Messages (existing)
+// ============================================================================
+
+// Job status
+enum JobStatus {
+  JOB_STATUS_UNSPECIFIED = 0;
+  JOB_STATUS_PENDING = 1;
+  JOB_STATUS_RUNNING = 2;
+  JOB_STATUS_COMPLETED = 3;
+  JOB_STATUS_FAILED = 4;
+  JOB_STATUS_TIMEOUT = 5;
+  JOB_STATUS_CANCELLED = 6;
+}
+
+// Create job request
+message CreateJobRequest {
+  string organization_id = 1;
+  string job_type = 2;
+  string prompt = 3;
+  map<string, string> parameters = 4;
+  int32 timeout_seconds = 5;
+  string callback_url = 6;
+}
+
+// Create job response
+message CreateJobResponse {
+  string job_id = 1;
+  string organization_id = 2;
+  JobStatus status = 3;
+  string pod_name = 4;
+  string namespace = 5;
+  google.protobuf.Timestamp created_at = 6;
+  int32 estimated_ttl_seconds = 7;
+}
+
+// Get job request
+message GetJobRequest {
+  string job_id = 1;
+}
+
+// Get job response
+message GetJobResponse {
+  string job_id = 1;
+  string organization_id = 2;
+  string namespace = 3;
+  string job_type = 4;
+  string prompt = 5;
+  map<string, string> parameters = 6;
+  JobStatus status = 7;
+  string pod_name = 8;
+  map<string, string> result = 9;
+  string error = 10;
+  google.protobuf.Timestamp started_at = 11;
+  google.protobuf.Timestamp completed_at = 12;
+  google.protobuf.Timestamp created_at = 13;
+  double duration_seconds = 14;
+}
+
+// List jobs request
+message ListJobsRequest {
+  string organization_id = 1;
+  JobStatus status_filter = 2;
+  int32 page_size = 3;
+  string page_token = 4;
+}
+
+// List jobs response
+message ListJobsResponse {
+  repeated GetJobResponse jobs = 1;
+  string next_page_token = 2;
+  int32 total_count = 3;
+}
+
+// Cancel job request
+message CancelJobRequest {
+  string job_id = 1;
+}
+
+// Cancel job response
+message CancelJobResponse {
+  string job_id = 1;
+  JobStatus status = 2;
+  google.protobuf.Timestamp cancelled_at = 3;
+}
+
+// Get job logs request
+message GetJobLogsRequest {
+  string job_id = 1;
+  int32 tail_lines = 2;
+}
+
+// Get job logs response
+message GetJobLogsResponse {
+  string job_id = 1;
+  string logs = 2;
+  google.protobuf.Timestamp retrieved_at = 3;
+}
+
+// ============================================================================
+// Health Check
+// ============================================================================
+service HealthService {
+  rpc Check(CheckRequest) returns (CheckResponse);
+}
+
+message CheckRequest {
+  string service = 1;
+}
+
+message CheckResponse {
+  enum ServingStatus {
+    SERVING_STATUS_UNSPECIFIED = 0;
+    SERVING_STATUS_SERVING = 1;
+    SERVING_STATUS_NOT_SERVING = 2;
+  }
+  ServingStatus status = 1;
+}

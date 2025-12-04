@@ -1,0 +1,13 @@
+version: v2
+name: buf.build/devops-in-motion/saas-services
+deps:
+  - buf.build/googleapis/googleapis
+breaking:
+  use:
+    - STANDARD
+lint:
+  use:
+    - STANDARD
+  except:
+    - PACKAGE_VERSION_SUFFIX
+    - SERVICE_SUFFIX
