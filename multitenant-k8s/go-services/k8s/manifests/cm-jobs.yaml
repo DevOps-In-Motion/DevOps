@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-rules
+data:
+  mcp-alerts.yaml: |
+    groups:
+    - name: mcp-processing
+      rules:
+      - alert: MCPProcessingStalled
+        expr: kafka_consumergroup_lag{group="mcp-processors"} > 1000
+        for: 5m
+        annotations:
+          summary: "MCP processing backlog growing"
+      
+      - alert: MCPJobFailureRate
+        expr: rate(kube_job_status_failed{job_name=~"mcp-processor.*"}[5m]) > 0.1
+        for: 5m
+        annotations:
+          summary: "High MCP job failure rate"

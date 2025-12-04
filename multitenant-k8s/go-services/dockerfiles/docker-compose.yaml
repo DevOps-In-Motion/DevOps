@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  mcp-server:
+    build:
+      context: .
+      dockerfile: Dockerfile.server
+    ports:
+      - "8080:8080"
+
+  kafka-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    environment:
+      - KAFKA_BROKERS=kafka:9092
+      - KAFKA_TOPIC=mcp-jobs
+      - MCP_CONSUMER_GROUP=mcp-workers
+      - MCP_SERVER_URL=http://mcp-server:8080
+    depends_on:
+      - mcp-server
+      - kafka
+    deploy:
+      replicas: 3
+
+  kafka:
+    image: confluentinc/cp-kafka:latest
+    environment:
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+    depends_on:
+      - zookeeper
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:latest
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181

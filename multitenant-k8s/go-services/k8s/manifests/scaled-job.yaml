@@ -1,0 +1,63 @@
+apiVersion: keda.sh/v1alpha1
+kind: ScaledJob
+metadata:
+  name: mcp-processor
+  namespace: default
+spec:
+  # Job template
+  jobTargetRef:
+    parallelism: 1                    # Each job processes 1 message
+    completions: 1                     # Then exits
+    activeDeadlineSeconds: 600         # Max 10 minutes per job
+    backoffLimit: 3                    # Retry failed jobs 3 times
+    ttlSecondsAfterFinished: 3600      # Clean up after 1 hour
+    template:
+      metadata:
+        labels:
+          app: mcp-processor
+      spec:
+        restartPolicy: OnFailure
+        containers:
+        - name: processor
+          image: your-registry/mcp-job:latest
+          env:
+          - name: KAFKA_BROKERS
+            value: "kafka-broker-1:9092,kafka-broker-2:9092,kafka-broker-3:9092"
+          - name: KAFKA_TOPIC
+            value: "mcp-jobs"
+          - name: KAFKA_CONSUMER_GROUP
+            value: "mcp-processors"
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 1000m
+              memory: 512Mi
+  
+  # Scaling configuration
+  pollingInterval: 10                  # Check Kafka every 10 seconds
+  successfulJobsHistoryLimit: 5        # Keep last 5 successful jobs
+  failedJobsHistoryLimit: 5            # Keep last 5 failed jobs
+  minReplicaCount: 0                   # Scale to ZERO when idle
+  maxReplicaCount: 100                 # Max 100 concurrent jobs
+  
+  # Kafka trigger
+  triggers:
+  - type: kafka
+    metadata:
+      bootstrapServers: kafka-broker-1:9092,kafka-broker-2:9092,kafka-broker-3:9092
+      consumerGroup: mcp-processors
+      topic: mcp-jobs
+      lagThreshold: "1"                # 1 message = 1 job
+      offsetResetPolicy: latest
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mcp-config
+  namespace: default
+data:
+  kafka-brokers: "kafka-broker-1:9092,kafka-broker-2:9092,kafka-broker-3:9092"
+  kafka-topic: "mcp-jobs"
+  consumer-group: "mcp-processors"

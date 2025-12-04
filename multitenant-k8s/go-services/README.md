@@ -1,8 +1,3 @@
-<<<<<<< HEAD
-# Introduciton
-
-This is a sample go framework for building Go based MCP servers at scale. I will list the architecture later but for now just know this was built with `buf.build` cli using connect Go.
-=======
 # Go Services
 
 gRPC-based microservices for multi-tenant Kubernetes namespace provisioning and job management.
@@ -53,18 +48,23 @@ gRPC-based microservices for multi-tenant Kubernetes namespace provisioning and 
 - **Language:** Go 1.25.4
 - **Communication:** Secure service-to-service with certificate-based authentication
 
-## Project Structure
+## Project Structure (high level)
 
 ```
 go-services/
-├── account-provisioning/    # Account provisioning service implementation
-├── mcp-job-service/          # MCP job service implementation
-├── saas/v1/                  # Protocol buffer definitions
-│   └── services.proto        # gRPC service definitions
-├── buf.yaml                  # Buf project configuration
-├── buf.gen.yaml              # Code generation settings
-├── go.mod                    # Go module dependencies
-└── start.sh                  # Build and code generation script
+├── cmd/
+│   ├── account-server/      # Connect HTTP server for AccountProvisioningService
+│   ├── scheduler-server/    # Connect HTTP server for MCPJobService (scheduler)
+│   └── mcp-worker/          # Kafka consumer that runs MCP automations
+├── pkg/
+│   ├── accountservice/      # Business logic for account provisioning (K8s + AWS)
+│   ├── schedulerservice/    # Scheduler logic (locking + enqueue to Kafka)
+│   └── mcp/                 # MCP worker library (Kafka consumer + runner interface)
+├── proto/                   # .proto API definitions
+├── gen/                     # Generated Go + Connect + validate + OpenAPI
+├── buf.yaml, buf.gen.yaml   # Buf configuration
+├── go.mod, go.sum           # Go module and dependencies
+└── start.sh                 # Proto generation and tooling bootstrap
 ```
 
 ## Building
@@ -86,8 +86,9 @@ This generates:
 
 ### Build Services
 ```bash
-go build ./account-provisioning
-go build ./mcp-job-service
+go build ./cmd/account-server
+go build ./cmd/scheduler-server
+go build ./cmd/mcp-worker
 ```
 
 ## Security
@@ -104,7 +105,7 @@ Services require:
 - Kubernetes cluster access (via ServiceAccount or kubeconfig)
 - AWS credentials (for IAM role and S3 management)
 
-## Deployment
+## Tenants
 
 Services are designed to run as Kubernetes deployments with:
 - ServiceAccounts bound to appropriate RBAC roles
@@ -112,4 +113,23 @@ Services are designed to run as Kubernetes deployments with:
 - Resource limits and quotas
 - Horizontal Pod Autoscaling support
 
->>>>>>> 7b1e239e659c62b097ae708a37ad2cfdd5d213ac
+
+## Architecture 
+
+┌───────────────┐
+│ Job Scheduler │
+└──────┬────────┘
+       │
+       ▼
+┌─────────────┐    ┌──────────────────┐    ┌─────────────────┐
+│   Kafka     │───▶│  KEDA Scaler     │───▶│   K8s Job API   │
+│   Topic     │    │  (Watches lag)   │    └─────────────────┘
+└─────────────┘    └──────────────────┘             │
+                                                    ▼
+                                            ┌─────────────────┐
+                                            │  MCP Job Pods   │
+                                            │  - Read Kafka   │
+                                            │  - Connect SSE  │
+                                            │  - Run tools    │
+                                            │  - Exit         │
+                                            └─────────────────┘
