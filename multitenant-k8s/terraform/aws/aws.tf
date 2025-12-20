@@ -60,7 +60,7 @@ module "vpc" {
 
 # Define a security group for your instances
 resource "aws_security_group" "ec2_sg" {
-  name_prefix = "example-sg-"
+  name_prefix = "${var.cluster_name}-sg"
 
   # Define your security group rules here
   # Example rule for SSH access:
@@ -77,6 +77,7 @@ module "eks" {
   source  = "terraform-aws-modules/eks/aws"
   version = "~> 21.0"
   kubernetes_version = "1.31"
+  name = "${var.cluster_name}-${var.environment}"
 
   vpc_id     = module.vpc.vpc_id
   subnet_ids = module.vpc.private_subnets  # Nodes will be provisioned here
@@ -141,7 +142,7 @@ module "eks" {
         dedicated = {
           key    = "workload"
           value  = "job-execution"
-          effect = "NoSchedule"
+          effect = "NO_SCHEDULE"
         }
       }
 
@@ -740,6 +741,206 @@ resource "aws_iam_role_policy" "eks_service_account_s3" {
   })
 }
 
+### ----- EKS configuration ----- ###
+
+# Karpenter Controller IAM Role
+resource "aws_iam_role" "karpenter_controller" {
+  name = "${var.cluster_name}-karpenter-controller"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action = "sts:AssumeRoleWithWebIdentity"
+      Effect = "Allow"
+      Principal = {
+        Federated = module.eks.oidc_provider_arn
+      }
+      Condition = {
+        StringEquals = {
+          "${module.eks.oidc_provider}:sub" = "system:serviceaccount:karpenter:karpenter"
+          "${module.eks.oidc_provider}:aud" = "sts.amazonaws.com"
+        }
+      }
+    }]
+  })
+
+  tags = {
+    Name        = "${var.cluster_name}-karpenter-controller"
+    Environment = var.environment
+  }
+}
+
+resource "aws_iam_role_policy" "karpenter_controller" {
+  name = "karpenter-controller-policy"
+  role = aws_iam_role.karpenter_controller.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "ec2:CreateFleet",
+          "ec2:CreateLaunchTemplate",
+          "ec2:CreateTags",
+          "ec2:DescribeAvailabilityZones",
+          "ec2:DescribeImages",
+          "ec2:DescribeInstances",
+          "ec2:DescribeInstanceTypeOfferings",
+          "ec2:DescribeInstanceTypes",
+          "ec2:DescribeLaunchTemplates",
+          "ec2:DescribeSecurityGroups",
+          "ec2:DescribeSpotPriceHistory",
+          "ec2:DescribeSubnets",
+          "ec2:DeleteLaunchTemplate",
+          "ec2:RunInstances",
+          "ec2:TerminateInstances",
+          "pricing:GetProducts",
+          "ssm:GetParameter"
+        ]
+        Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "iam:PassRole"
+        ]
+        Resource = module.eks.eks_managed_node_groups["general"].iam_role_arn
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "eks:DescribeCluster"
+        ]
+        Resource = module.eks.cluster_arn
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "sqs:DeleteMessage",
+          "sqs:GetQueueAttributes",
+          "sqs:GetQueueUrl",
+          "sqs:ReceiveMessage"
+        ]
+        Resource = aws_sqs_queue.karpenter_interruption.arn
+      }
+    ]
+  })
+}
+
+# Karpenter Node IAM Role (reuse existing node role)
+# Already created by EKS module, just need to add tags
+
+# SQS Queue for Spot Instance Interruption Handling
+resource "aws_sqs_queue" "karpenter_interruption" {
+  name                      = "${var.cluster_name}-karpenter-interruption"
+  message_retention_seconds = 300
+  sqs_managed_sse_enabled   = true
+
+  tags = {
+    Name        = "${var.cluster_name}-karpenter-interruption"
+    Environment = var.environment
+  }
+}
+
+resource "aws_sqs_queue_policy" "karpenter_interruption" {
+  queue_url = aws_sqs_queue.karpenter_interruption.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Principal = {
+        Service = [
+          "events.amazonaws.com",
+          "sqs.amazonaws.com"
+        ]
+      }
+      Action   = "sqs:SendMessage"
+      Resource = aws_sqs_queue.karpenter_interruption.arn
+    }]
+  })
+}
+
+# EventBridge Rules for Spot Interruptions
+resource "aws_cloudwatch_event_rule" "karpenter_spot_interruption" {
+  name        = "${var.cluster_name}-karpenter-spot-interruption"
+  description = "Karpenter Spot Instance Interruption Warning"
+
+  event_pattern = jsonencode({
+    source      = ["aws.ec2"]
+    detail-type = ["EC2 Spot Instance Interruption Warning"]
+  })
+
+  tags = {
+    Name        = "${var.cluster_name}-karpenter-spot-interruption"
+    Environment = var.environment
+  }
+}
+
+resource "aws_cloudwatch_event_target" "karpenter_spot_interruption" {
+  rule      = aws_cloudwatch_event_rule.karpenter_spot_interruption.name
+  target_id = "KarpenterInterruptionQueueTarget"
+  arn       = aws_sqs_queue.karpenter_interruption.arn
+}
+
+# Instance State Change
+resource "aws_cloudwatch_event_rule" "karpenter_instance_state_change" {
+  name        = "${var.cluster_name}-karpenter-instance-state-change"
+  description = "Karpenter Instance State Change"
+
+  event_pattern = jsonencode({
+    source      = ["aws.ec2"]
+    detail-type = ["EC2 Instance State-change Notification"]
+  })
+
+  tags = {
+    Name        = "${var.cluster_name}-karpenter-instance-state-change"
+    Environment = var.environment
+  }
+}
+
+resource "aws_cloudwatch_event_target" "karpenter_instance_state_change" {
+  rule      = aws_cloudwatch_event_rule.karpenter_instance_state_change.name
+  target_id = "KarpenterInterruptionQueueTarget"
+  arn       = aws_sqs_queue.karpenter_interruption.arn
+}
+
+# Rebalance Recommendation
+resource "aws_cloudwatch_event_rule" "karpenter_rebalance" {
+  name        = "${var.cluster_name}-karpenter-rebalance"
+  description = "Karpenter Rebalance Recommendation"
+
+  event_pattern = jsonencode({
+    source      = ["aws.ec2"]
+    detail-type = ["EC2 Instance Rebalance Recommendation"]
+  })
+
+  tags = {
+    Name        = "${var.cluster_name}-karpenter-rebalance"
+    Environment = var.environment
+  }
+}
+
+resource "aws_cloudwatch_event_target" "karpenter_rebalance" {
+  rule      = aws_cloudwatch_event_rule.karpenter_rebalance.name
+  target_id = "KarpenterInterruptionQueueTarget"
+  arn       = aws_sqs_queue.karpenter_interruption.arn
+}
+
+# Outputs for Karpenter
+output "karpenter_irsa_role_arn" {
+  description = "Karpenter IRSA Role ARN"
+  value       = aws_iam_role.karpenter_controller.arn
+}
+
+output "karpenter_sqs_queue_name" {
+  description = "Karpenter SQS Queue Name"
+  value       = aws_sqs_queue.karpenter_interruption.name
+}
+
+
+### ----- Security ----- ###
 # KMS Key for Secrets Manager encryption
 resource "aws_kms_key" "secrets_manager" {
   description             = "KMS key for Secrets Manager encryption"

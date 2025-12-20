@@ -1,0 +1,121 @@
+# deployment-with-karpenter.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: account-provisioning-service
+  namespace: default
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: account-provisioning
+  template:
+    metadata:
+      labels:
+        app: account-provisioning
+    spec:
+      serviceAccountName: account-provisioning-sa
+      
+      # Node selection for general-purpose pool
+      nodeSelector:
+        node-type: general-purpose
+      
+      # Topology spread for HA
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: DoNotSchedule
+          labelSelector:
+            matchLabels:
+              app: account-provisioning
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app: account-provisioning
+
+      containers:
+      - name: app
+        image: account-provisioning:latest
+        
+        # CRITICAL: Set resource requests for Karpenter to work
+        resources:
+          requests:
+            cpu: "500m"
+            memory: "512Mi"
+          limits:
+            cpu: "1000m"
+            memory: "1Gi"
+        
+        ports:
+        - containerPort: 8080
+          name: https
+        
+        env:
+        - name: MTLS_CERT_SECRET
+          value: jobsched-account-provisioning-cert
+        
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+            scheme: HTTPS
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8080
+            scheme: HTTPS
+          initialDelaySeconds: 5
+          periodSeconds: 5
+
+---
+# Job worker example
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: mcp-job-123
+  namespace: default
+spec:
+  ttlSecondsAfterFinished: 3600  # Auto-delete after 1 hour
+  backoffLimit: 3
+  
+  template:
+    metadata:
+      labels:
+        app: mcp-job
+        job-id: "123"
+    spec:
+      serviceAccountName: mcp-pod-sa
+      restartPolicy: Never
+      
+      # Schedule on spot instances with job-execution taint
+      tolerations:
+        - key: workload
+          operator: Equal
+          value: job-execution
+          effect: NoSchedule
+      
+      nodeSelector:
+        node-type: job-workers
+      
+      containers:
+      - name: worker
+        image: mcp-worker:latest
+        
+        resources:
+          requests:
+            cpu: "2000m"     # 2 CPUs
+            memory: "4Gi"
+          limits:
+            cpu: "4000m"     # 4 CPUs
+            memory: "8Gi"
+        
+        env:
+        - name: JOB_ID
+          value: "123"
+        - name: S3_BUCKET
+          value: jobsched-artifacts-123456789

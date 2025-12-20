@@ -1,0 +1,262 @@
+# karpenter-nodepool-general.yaml
+apiVersion: karpenter.sh/v1beta1
+kind: NodePool
+metadata:
+  name: general-purpose
+spec:
+  template:
+    metadata:
+      labels:
+        node-type: general-purpose
+        managed-by: karpenter
+    spec:
+      requirements:
+        # Instance types - multiple families for flexibility
+        - key: karpenter.k8s.aws/instance-family
+          operator: In
+          values: ["t3", "t3a", "c6i", "c6a", "m6i", "m6a"]
+        
+        # Instance sizes
+        - key: karpenter.k8s.aws/instance-size
+          operator: In
+          values: ["large", "xlarge", "2xlarge"]
+        
+        # CPU architecture
+        - key: kubernetes.io/arch
+          operator: In
+          values: ["amd64"]
+        
+        # Capacity type - on-demand only for general workloads
+        - key: karpenter.sh/capacity-type
+          operator: In
+          values: ["on-demand"]
+        
+        # Availability zones
+        - key: topology.kubernetes.io/zone
+          operator: In
+          values: ["us-east-2a", "us-east-2b", "us-east-2c"]
+
+      nodeClassRef:
+        name: default
+
+      # Kubelet configuration
+      kubelet:
+        maxPods: 110
+        podsPerCore: 0
+        systemReserved:
+          cpu: 100m
+          memory: 100Mi
+          ephemeral-storage: 1Gi
+        kubeReserved:
+          cpu: 100m
+          memory: 100Mi
+          ephemeral-storage: 1Gi
+        evictionHard:
+          memory.available: 5%
+          nodefs.available: 10%
+        evictionSoft:
+          memory.available: 10%
+          nodefs.available: 15%
+        evictionSoftGracePeriod:
+          memory.available: 1m
+          nodefs.available: 1m
+
+  # Resource limits for this pool
+  limits:
+    cpu: "500"
+    memory: 1000Gi
+
+  # Weight for prioritization (lower = higher priority)
+  weight: 10
+
+  # Disruption controls
+  disruption:
+    consolidationPolicy: WhenUnderutilized
+    consolidateAfter: 30s
+    
+    # Disruption budgets
+    budgets:
+      - nodes: "10%"
+        schedule: "0 9-17 * * MON-FRI"  # Business hours - be conservative
+        duration: 8h
+      - nodes: "50%"
+        schedule: "0 0-8,18-23 * * *"  # Off hours - more aggressive
+        duration: 16h
+
+---
+# karpenter-nodepool-workers.yaml
+apiVersion: karpenter.sh/v1beta1
+kind: NodePool
+metadata:
+  name: job-workers
+spec:
+  template:
+    metadata:
+      labels:
+        node-type: job-workers
+        workload: job-execution
+        managed-by: karpenter
+    spec:
+      requirements:
+        # Larger instance types for compute-heavy jobs
+        - key: karpenter.k8s.aws/instance-family
+          operator: In
+          values: ["c6i", "c6a", "c7i", "m6i", "m6a", "r6i", "r6a"]
+        
+        - key: karpenter.k8s.aws/instance-size
+          operator: In
+          values: ["xlarge", "2xlarge", "4xlarge", "8xlarge"]
+        
+        - key: kubernetes.io/arch
+          operator: In
+          values: ["amd64"]
+        
+        # Spot instances for cost savings
+        - key: karpenter.sh/capacity-type
+          operator: In
+          values: ["spot", "on-demand"]
+        
+        - key: topology.kubernetes.io/zone
+          operator: In
+          values: ["us-east-2a", "us-east-2b", "us-east-2c"]
+
+      # Taints for dedicated workloads
+      taints:
+        - key: workload
+          value: job-execution
+          effect: NoSchedule
+
+      nodeClassRef:
+        name: spot-optimized
+
+      kubelet:
+        maxPods: 110
+        systemReserved:
+          cpu: 200m
+          memory: 200Mi
+        kubeReserved:
+          cpu: 200m
+          memory: 200Mi
+
+  limits:
+    cpu: "2000"
+    memory: 4000Gi
+
+  weight: 20
+
+  disruption:
+    consolidationPolicy: WhenUnderutilized
+    consolidateAfter: 1m  # Faster consolidation for ephemeral workloads
+    
+    budgets:
+      - nodes: "100%"  # Can disrupt all job worker nodes
+
+---
+# karpenter-ec2nodeclass-default.yaml
+apiVersion: karpenter.k8s.aws/v1beta1
+kind: EC2NodeClass
+metadata:
+  name: default
+spec:
+  amiFamily: AL2
+  
+  # Use the EKS-optimized AMI
+  amiSelectorTerms:
+    - alias: al2@latest
+
+  # IAM role for nodes
+  role: <NODE_IAM_ROLE_NAME>  # From your EKS module output
+
+  # Subnet selection
+  subnetSelectorTerms:
+    - tags:
+        karpenter.sh/discovery: <CLUSTER_NAME>
+
+  # Security group selection
+  securityGroupSelectorTerms:
+    - tags:
+        karpenter.sh/discovery: <CLUSTER_NAME>
+
+  # User data for node initialization
+  userData: |
+    #!/bin/bash
+    # Custom node initialization
+    echo "Node initialized by Karpenter"
+
+  # Block device mappings
+  blockDeviceMappings:
+    - deviceName: /dev/xvda
+      ebs:
+        volumeSize: 100Gi
+        volumeType: gp3
+        iops: 3000
+        throughput: 125
+        encrypted: true
+        deleteOnTermination: true
+
+  # Metadata options
+  metadataOptions:
+    httpEndpoint: enabled
+    httpProtocolIPv6: disabled
+    httpPutResponseHopLimit: 2
+    httpTokens: required
+
+  # Tags for all resources
+  tags:
+    Name: <CLUSTER_NAME>-karpenter-node
+    Environment: production
+    ManagedBy: karpenter
+    karpenter.sh/discovery: <CLUSTER_NAME>
+
+---
+# karpenter-ec2nodeclass-spot.yaml
+apiVersion: karpenter.k8s.aws/v1beta1
+kind: EC2NodeClass
+metadata:
+  name: spot-optimized
+spec:
+  amiFamily: AL2
+  
+  amiSelectorTerms:
+    - alias: al2@latest
+
+  role: <NODE_IAM_ROLE_NAME>
+
+  subnetSelectorTerms:
+    - tags:
+        karpenter.sh/discovery: <CLUSTER_NAME>
+
+  securityGroupSelectorTerms:
+    - tags:
+        karpenter.sh/discovery: <CLUSTER_NAME>
+
+  userData: |
+    #!/bin/bash
+    # Spot instance optimized settings
+    echo "Spot instance initialized by Karpenter"
+    
+    # Increase max pods for larger instances
+    sed -i 's/--max-pods=[0-9]*/--max-pods=110/' /etc/eks/bootstrap.sh
+
+  blockDeviceMappings:
+    - deviceName: /dev/xvda
+      ebs:
+        volumeSize: 200Gi  # Larger for job artifacts
+        volumeType: gp3
+        iops: 4000
+        throughput: 250
+        encrypted: true
+        deleteOnTermination: true
+
+  metadataOptions:
+    httpEndpoint: enabled
+    httpProtocolIPv6: disabled
+    httpPutResponseHopLimit: 2
+    httpTokens: required
+
+  tags:
+    Name: <CLUSTER_NAME>-karpenter-spot-node
+    Environment: production
+    ManagedBy: karpenter
+    NodeType: spot
+    karpenter.sh/discovery: <CLUSTER_NAME>

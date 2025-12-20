@@ -1,0 +1,22 @@
+# will scale as number of jobs increase
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: rabbitmq-scaler
+spec:
+  scaleTargetRef:
+    name: worker-deployment
+  minReplicaCount: 2
+  maxReplicaCount: 100
+  triggers:
+  - type: rabbitmq
+    metadata:
+      queueName: job-queue
+      queueLength: "10"  # Scale when queue > 10 messages
+      host: amqp://rabbitmq:5672
+  
+  # Combined with CPU utilization
+  - type: cpu
+    metricType: Utilization
+    metadata:
+      value: "70"

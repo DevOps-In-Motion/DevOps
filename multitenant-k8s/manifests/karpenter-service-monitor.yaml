@@ -1,0 +1,29 @@
+# karpenter-servicemonitor.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: karpenter-metrics
+  namespace: karpenter
+  labels:
+    app.kubernetes.io/name: karpenter
+spec:
+  ports:
+  - name: metrics
+    port: 8080
+    targetPort: 8080
+  selector:
+    app.kubernetes.io/name: karpenter
+
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: karpenter
+  namespace: karpenter
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: karpenter
+  endpoints:
+  - port: metrics
+    interval: 30s

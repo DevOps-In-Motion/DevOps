@@ -1,6 +1,6 @@
 # Multi-Tenant Kubernetes Platform
 
-This repository contains a reference solution for automating multi-tenant SaaS infrastructure in Kubernetes. It enables you to provision and manage fully isolated tenant environments—using namespaces, node pools, or clusters—complete with network and resource separation. The platform is designed for 3-tier and other modern cloud-native SaaS architectures.
+This repository contains a reference solution for a multi MCP framework for Ops MCP pipelines. The infrastructure is designed to run multi-tenant SaaS on Kubernetes. It enables you to provision and manage fully isolated tenant environments—using namespaces, node pools, or clusters—complete with network and resource separation. The platform is designed for 3-tier and other modern cloud-native SaaS architectures. 
 
 ## Overview
 
@@ -14,6 +14,8 @@ This project is a complete automation stack for the lifecycle of SaaS tenancy on
 - **OpenAPI documentation and pluggable frontends**
 
 ## Architecture
+
+The cloud based architecture is HA with a DR strategy that uses HA proxy. The security is held in place using secrets manager, STS, and iam user automation using existing roles for each tenant's services across namespace.
 
 The core platform services are organized in `go-services/` and defined via protocol buffers. Current microservices include:
 
