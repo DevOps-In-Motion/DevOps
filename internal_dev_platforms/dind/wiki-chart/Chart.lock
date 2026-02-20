@@ -1,0 +1,12 @@
+dependencies:
+- name: postgresql
+  repository: https://charts.bitnami.com/bitnami
+  version: 12.12.10
+- name: kube-prometheus-stack
+  repository: https://prometheus-community.github.io/helm-charts
+  version: 55.6.0
+- name: openebs
+  repository: https://openebs.github.io/openebs
+  version: 4.5.0-develop
+digest: sha256:55ad5b8d29bbf4bf714f7b423ec49a4f5aaef738b6778e33548285d5fb0accec
+generated: "2026-02-16T19:33:54.804641-08:00"

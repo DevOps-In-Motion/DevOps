@@ -1,0 +1,95 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wiki-api
+  labels:
+    app: wiki-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: wiki-api
+  template:
+    metadata:
+      labels:
+        app: wiki-api
+    spec:
+      containers:
+        - name: api
+          image: public.ecr.aws/i3h9f2j0/demos/wiki-backend:latest
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "128m"
+            limits:
+              memory: "512Mi"
+              cpu: "256m"
+          ports:
+            - containerPort: 8080
+              name: http
+          env:
+            - name: PORT
+              value: "8080"
+            - name: DATABASE_URL
+              value: "postgresql://postgres:postgres@localhost:5432/wiki"
+        - name: postgres
+          image: postgres:15-alpine
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "128m"
+            limits:
+              memory: "512Mi"
+              cpu: "256m"
+          env:
+            - name: POSTGRES_USER
+              value: postgres
+            - name: POSTGRES_PASSWORD
+              value: postgres
+            - name: POSTGRES_DB
+              value: wiki
+          ports:
+            - containerPort: 5432
+              name: postgresql
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "postgres"]
+            initialDelaySeconds: 5
+            periodSeconds: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: wiki-api-service
+  labels:
+    app: wiki-api
+spec:
+  selector:
+    app: wiki-api
+  ports:
+    - port: 8080
+      targetPort: 8080
+      name: http
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: wiki-api-ingress
+spec:
+  rules:
+    - http:
+        paths:
+          - pathType: Prefix
+            path: /users
+            backend:
+              service:
+                name: wiki-api-service
+                port:
+                  number: 8080
+          - pathType: Prefix
+            path: /posts
+            backend:
+              service:
+                name: wiki-api-service
+                port:
+                  number: 8080

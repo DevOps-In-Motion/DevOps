@@ -1,0 +1,17 @@
+{{- if and .Values.deployment.sidecars.postgresql.enabled .Values.deployment.sidecars.postgresql.persistence.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "wiki-chart.fullname" . }}-postgresql
+  labels:
+    {{- include "wiki-chart.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.deployment.sidecars.postgresql.persistence.size | default "1Gi" }}
+  {{- with .Values.deployment.sidecars.postgresql.persistence.storageClassName }}
+  storageClassName: {{ . | quote }}
+  {{- end }}
+{{- end }}

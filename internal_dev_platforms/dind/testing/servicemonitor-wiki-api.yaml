@@ -1,0 +1,20 @@
+# ServiceMonitor for wiki-api (test-wiki-stack.yaml). Apply after kube-prometheus-stack is installed.
+# Ensures Prometheus scrapes wiki-api-service.default:8080/metrics.
+# Install script applies this with -n $NAMESPACE_MONITORING and labels release=$RELEASE_NAME.
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: prometheus-stack-wiki-api
+  labels:
+    release: prometheus-stack
+spec:
+  selector:
+    matchLabels:
+      app: wiki-api
+  namespaceSelector:
+    matchNames:
+      - default
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 30s

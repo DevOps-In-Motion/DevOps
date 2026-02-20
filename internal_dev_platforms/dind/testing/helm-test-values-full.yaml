@@ -1,0 +1,62 @@
+# Full install: backend app + postgres sidecar + kube-prometheus-stack in monitoring namespace.
+#
+# Usage (from repo root):
+#   cd wiki-chart && helm dependency update && cd ..
+#   helm upgrade --install wiki-api ./wiki-chart -n monitoring --create-namespace -f ./testing/helm-test-values-full.yaml --wait --timeout 10m
+#
+# API: http://localhost/users  http://localhost/posts  (requires ingress; backend runs in monitoring)
+# Grafana: kubectl port-forward -n monitoring svc/wiki-api-grafana 3000:80  then http://localhost:3000/grafana/ (admin / admin).
+
+service:
+  name: wiki-api-service
+  port: 8080
+
+image:
+  repository: public.ecr.aws/i3h9f2j0/demos/wiki-backend
+  tag: latest
+  pullPolicy: Always
+
+deployment:
+  replicaCount: 1
+  sidecars:
+    postgresql:
+      enabled: true
+      image:
+        repository: postgres
+        tag: "15-alpine"
+      database: wiki
+      username: postgres
+      password: postgres
+
+ingress:
+  enabled: true
+  name: wiki-api-ingress
+  className: nginx
+  hosts:
+    - host: localhost
+      paths:
+        - path: /users
+          pathType: Prefix
+        - path: /posts
+          pathType: Prefix
+
+postgresql:
+  enabled: false
+
+openebs:
+  enabled: false
+
+# Enable our chart’s Prometheus stack integration (dashboard ConfigMap, Grafana ingress, etc.)
+prometheusStack:
+  enabled: true
+
+# Install kube-prometheus-stack subchart (Prometheus operator, Prometheus, Grafana, Alertmanager).
+# Chart defaults in values.yaml already set prometheus, grafana, additionalServiceMonitors for the wiki backend.
+prometheus-stack:
+  enabled: true
+  prometheus:
+    enabled: true
+  grafana:
+    enabled: true
+  alertmanager:
+    enabled: true

@@ -1,0 +1,61 @@
+1. If you don't have an existing load balancer setup or are using this on minikube, set 3 port-forwards for the services to work:
+
+  kubectl port-forward -n {{ .Values.prometheusStack.monitoringNamespace | default "monitoring" }} svc/{{ .Values.prometheusStack.prometheusServiceName | default "prometheus-operator-prometheus" }} 9090:9090 &>/dev/null &
+  kubectl port-forward -n {{ .Values.prometheusStack.monitoringNamespace | default "monitoring" }} svc/{{ .Values.prometheusStack.grafanaServiceName | default (printf "%s-grafana" .Release.Name) }} 3000:80 &>/dev/null &
+  kubectl port-forward -n {{ .Release.Namespace }} svc/{{ .Values.service.name | default (include "wiki-chart.fullname" .) }} 8080:8080 &>/dev/null &
+
+2. Get the application URL by running these commands:
+{{ "\n" }}
+{{- if .Values.ingress.enabled }}
+{{- range $host := .Values.ingress.hosts }}
+{{- range .paths }}
+  {{- if $host.host }}http{{ if $.Values.ingress.tls }}s{{ end }}://{{ $host.host }}{{ .path }}{{ "\n" }}
+  {{- else }}http://<ingress-ip>{{ .path }}{{ "\n" }}
+  {{- end }}
+{{- end }}
+{{- end }}
+{{- else if contains "NodePort" .Values.service.type }}
+  export NODE_PORT=$(kubectl get --namespace {{ .Release.Namespace }} -o jsonpath="{.spec.ports[0].nodePort}" services {{ .Values.service.name | default (include "wiki-chart.fullname" .) }})
+  export NODE_IP=$(kubectl get nodes --namespace {{ .Release.Namespace }} -o jsonpath="{.items[0].status.addresses[0].address}")
+  echo http://$NODE_IP:$NODE_PORT
+{{- else if contains "LoadBalancer" .Values.service.type }}
+     NOTE: It may take a few minutes for the LoadBalancer IP to be available.
+           You can watch its status by running 'kubectl get --namespace {{ .Release.Namespace }} svc -w {{ .Values.service.name | default (include "wiki-chart.fullname" .) }}'
+  export SERVICE_IP=$(kubectl get svc --namespace {{ .Release.Namespace }} {{ .Values.service.name | default (include "wiki-chart.fullname" .) }} --template "{{"{{ range (index .status.loadBalancer.ingress 0) }}{{.}}{{ end }}"}}")
+  echo http://$SERVICE_IP:{{ .Values.service.port }}
+{{- else if contains "ClusterIP" .Values.service.type }}
+  export POD_NAME=$(kubectl get pods --namespace {{ .Release.Namespace }} -l "app.kubernetes.io/name={{ include "wiki-chart.name" . }},app.kubernetes.io/instance={{ .Release.Name }}" -o jsonpath="{.items[0].metadata.name}")
+  export CONTAINER_PORT=$(kubectl get pod --namespace {{ .Release.Namespace }} $POD_NAME -o jsonpath="{.spec.containers[0].ports[0].containerPort}")
+  echo "Visit http://127.0.0.1:8080 to use your application"
+  kubectl --namespace {{ .Release.Namespace }} port-forward $POD_NAME 8080:$CONTAINER_PORT
+{{- end }}
+
+3. Grafana login: http://localhost:3000/grafana/login (admin / admin)
+   Dashboard: http://localhost:3000/grafana/d/creation-dashboard-678/creation
+{{- if .Values.prometheusStack.enabled }}
+   (Prometheus scrapes wiki /metrics via ServiceMonitor; Grafana creation dashboard is pre-loaded from ConfigMap with label grafana_dashboard=1.)
+{{- end }}
+
+4. API endpoints: Run the test script to check the endpoints, or copy-paste below to quick test.
+
+  export BASE_URL="http://localhost:8080"
+  curl -s -X POST "$BASE_URL/users" \
+    -H "Content-Type: application/json" \
+    -d '{"name": "Bob"}'
+  curl -s -X POST "$BASE_URL/posts" \
+    -H "Content-Type: application/json" \
+    --data-raw '{"user_id": 1, "content": "Hello World! This is my first post."}'
+
+  Endpoints:
+{{- if .Values.ingress.enabled }}
+{{- range $host := .Values.ingress.hosts }}
+{{- range .paths }}
+  {{- if $host.host }}  http{{ if $.Values.ingress.tls }}s{{ end }}://{{ $host.host }}{{ .path }}{{ "\n" }}
+  {{- else }}  http://localhost{{ .path }}{{ "\n" }}
+  {{- end }}
+{{- end }}
+{{- end }}
+{{- else }}
+  http://localhost:8080/users
+  http://localhost:8080/posts
+{{- end }}

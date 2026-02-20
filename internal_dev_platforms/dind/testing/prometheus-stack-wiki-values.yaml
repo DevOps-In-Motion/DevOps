@@ -1,0 +1,33 @@
+# Values for kube-prometheus-stack so Grafana hooks up to the wiki stack from test-wiki-stack.yaml.
+# Prometheus scrapes wiki-api-service:8080/metrics in default namespace.
+# Grafana serves at /grafana/ and gets the creation dashboard from a ConfigMap (created by install-helm.sh).
+
+prometheus:
+  prometheusSpec:
+    additionalScrapeConfigs:
+      - job_name: wiki-api
+        metrics_path: /metrics
+        static_configs:
+          - targets:
+              - wiki-api-service.default.svc.cluster.local:8080
+
+grafana:
+  adminPassword: admin
+  grafana.ini:
+    server:
+      domain: localhost
+      root_url: "%(protocol)s://%(domain)s/grafana/"
+      serve_from_sub_path: true
+  ingress:
+    enabled: true
+    path: /grafana
+    pathType: Prefix
+    # Use localhost for local access (same as wiki ingress)
+    hosts:
+      - localhost
+  sidecar:
+    dashboards:
+      enabled: true
+      label: grafana_dashboard
+      labelValue: "1"
+      searchNamespace: ALL

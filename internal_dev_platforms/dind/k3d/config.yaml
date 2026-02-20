@@ -1,0 +1,38 @@
+# k3d cluster config for wiki stack. Used by entrypoint: k3d cluster create --config /app/k3d/config.yaml
+# For data persistence (Option 1): run with -v wiki-data:/data and uncomment the volumes block below.
+apiVersion: k3d.io/v1alpha5
+kind: Simple
+
+metadata:
+  name: wiki
+
+servers: 1
+agents: 1
+
+image: rancher/k3s:latest
+
+kubeAPI:
+  hostIP: "0.0.0.0"
+  hostPort: "6550"
+
+ports:
+  - port: 8080:80
+    nodeFilters:
+      - loadbalancer
+  - port: 8443:443
+    nodeFilters:
+      - loadbalancer
+
+# Optional: uncomment to mount Postgres data into nodes (requires -v wiki-data:/data when running DinD).
+# volumes:
+#   - volume: /data/wiki-postgres:/mnt/data/wiki-backend-postgresql
+#     nodeFilters:
+#       - server:*
+#       - agent:*
+
+options:
+  k3d:
+    wait: true
+    timeout: "300s"
+  runtime:
+    serversMemory: "4g"

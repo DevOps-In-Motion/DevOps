@@ -1,0 +1,76 @@
+# Values for wiki-chart when running in k3d with Traefik (K3s default ingress).
+# Follows k3d "Exposing Services via Ingress": port 80 (Traefik) mapped to host 8080.
+# No socket mount; use DinD.
+
+service:
+  port: 8080
+
+# Wiki API backend. If ImagePullBackOff, use a local image: build from wiki-service, then
+#   docker build -t wiki-backend:local <path-to-wiki-service>
+#   k3d image import wiki-backend:local -c wiki
+# and set either image.repository to wiki-backend, image.tag to local, or fastapi.image_name to "wiki-backend:local"
+image:
+  repository: public.ecr.aws/i3h9f2j0/demos/wiki-backend
+  tag: latest
+  pullPolicy: Always
+# fastapi:
+#   image_name: "wiki-backend:local"   # override if ECR image doesn't pull
+
+deployment:
+  replicaCount: 1
+  sidecars:
+    postgresql:
+      enabled: true
+      image:
+        repository: postgres
+        tag: "15"
+        pullPolicy: IfNotPresent
+      database: wiki
+      username: postgres
+      password: postgres
+      #persistence:
+       # enabled: true
+        #size: 1Gi
+        # Must match path in k3d config volumes (node side). Persists when using -v wiki-data:/data.
+        #hostPath: /mnt/data/wiki-backend-postgresql
+
+# K3s deploys Traefik as default ingress. Per k3d docs: annotation for HTTP (no ssl redirect).
+ingress:
+  enabled: true
+  className: traefik
+  annotations:
+    ingress.kubernetes.io/ssl-redirect: "false"
+  hosts:
+    - host: localhost
+      paths:
+        - path: /users
+          pathType: Prefix
+        - path: /posts
+          pathType: Prefix
+        - path: /metrics
+          pathType: Prefix
+        - path: /
+          pathType: Prefix
+
+postgresql:
+  enabled: false
+  image:
+    repository: postgres
+    tag: "15"
+  auth:
+    postgresPassword: postgres
+    database: wiki
+
+openebs:
+  enabled: false
+
+prometheusStack:
+  enabled: true
+  # Grafana runs in monitoring namespace as prometheus-operator-grafana (subchart fullnameOverride)
+  grafanaServiceName: prometheus-operator-grafana
+
+# Grafana login: always admin / admin
+prometheus-stack:
+  enabled: true
+  grafana:
+    adminPassword: admin

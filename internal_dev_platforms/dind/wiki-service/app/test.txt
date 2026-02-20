@@ -1,0 +1,92 @@
+============================= test session starts ==============================
+platform linux -- Python 3.13.12, pytest-9.0.2, pluggy-1.6.0 -- /app/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /app
+configfile: pyproject.toml
+plugins: asyncio-1.3.0, anyio-4.11.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 43 items
+
+app/tests/test_integration.py::test_database_connection PASSED           [  2%]
+app/tests/test_integration.py::test_create_tables PASSED                 [  4%]
+app/tests/test_integration.py::test_create_user PASSED                   [  6%]
+app/tests/test_integration.py::test_get_user PASSED                      [  9%]
+app/tests/test_integration.py::test_get_user_not_found PASSED            [ 11%]
+app/tests/test_integration.py::test_get_all_users PASSED                 [ 13%]
+app/tests/test_integration.py::test_update_user PASSED                   [ 16%]
+app/tests/test_integration.py::test_update_user_not_found PASSED         [ 18%]
+app/tests/test_integration.py::test_delete_user PASSED                   [ 20%]
+app/tests/test_integration.py::test_delete_user_not_found PASSED         [ 23%]
+app/tests/test_integration.py::test_create_post PASSED                   [ 25%]
+app/tests/test_integration.py::test_get_post PASSED                      [ 27%]
+app/tests/test_integration.py::test_get_post_not_found PASSED            [ 30%]
+app/tests/test_integration.py::test_get_all_posts PASSED                 [ 32%]
+app/tests/test_integration.py::test_update_post PASSED                   [ 34%]
+app/tests/test_integration.py::test_update_post_not_found PASSED         [ 37%]
+app/tests/test_integration.py::test_delete_post PASSED                   [ 39%]
+app/tests/test_integration.py::test_delete_post_not_found PASSED         [ 41%]
+app/tests/test_integration.py::test_create_post_invalid_user_raises PASSED [ 44%]
+app/tests/test_integration.py::test_user_can_have_multiple_posts PASSED  [ 46%]
+app/tests/test_integration.py::test_crud_operations PASSED               [ 48%]
+app/tests/test_main.py::test_health PASSED                               [ 51%]
+app/tests/test_main.py::test_root PASSED                                 [ 53%]
+app/tests/test_main.py::test_create_user PASSED                          [ 55%]
+app/tests/test_main.py::test_get_user PASSED                             [ 58%]
+app/tests/test_main.py::test_get_user_not_found PASSED                   [ 60%]
+app/tests/test_main.py::test_create_post PASSED                          [ 62%]
+app/tests/test_main.py::test_create_post_user_not_found PASSED           [ 65%]
+app/tests/test_main.py::test_get_post PASSED                             [ 67%]
+app/tests/test_main.py::test_get_post_not_found PASSED                   [ 69%]
+app/tests/test_main.py::test_metrics PASSED                              [ 72%]
+app/tests/test_mock_integration.py::test_get_user_not_found PASSED       [ 74%]
+app/tests/test_mock_integration.py::test_get_post_not_found PASSED       [ 76%]
+app/tests/test_mock_integration.py::test_create_user_validation PASSED   [ 79%]
+app/tests/test_mock_integration.py::test_create_user_with_extra_field PASSED [ 81%]
+app/tests/test_mock_integration.py::test_create_post_validation_missing_user_id PASSED [ 83%]
+app/tests/test_mock_integration.py::test_create_post_validation_missing_content PASSED [ 86%]
+app/tests/test_mock_integration.py::test_create_post_user_not_found PASSED [ 88%]
+app/tests/test_mock_integration.py::test_get_user_success PASSED         [ 90%]
+app/tests/test_mock_integration.py::test_get_post_success PASSED         [ 93%]
+app/tests/test_mock_integration.py::test_create_user_success PASSED      [ 95%]
+app/tests/test_mock_integration.py::test_create_post_success PASSED      [ 97%]
+app/tests/test_mock_integration.py::test_metrics_returns_text PASSED     [100%]
+
+=============================== warnings summary ===============================
+app/schemas.py:10
+  /app/app/schemas.py:10: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class UserResponse(BaseModel):
+
+app/schemas.py:25
+  /app/app/schemas.py:25: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class PostResponse(BaseModel):
+
+app/main.py:13
+  /app/app/main.py:13: DeprecationWarning: 
+          on_event is deprecated, use lifespan event handlers instead.
+  
+          Read more about it in the
+          [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+          
+    @app.on_event("startup")
+
+.venv/lib/python3.13/site-packages/fastapi/applications.py:4575
+.venv/lib/python3.13/site-packages/fastapi/applications.py:4575
+  /app/.venv/lib/python3.13/site-packages/fastapi/applications.py:4575: DeprecationWarning: 
+          on_event is deprecated, use lifespan event handlers instead.
+  
+          Read more about it in the
+          [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+          
+    return self.router.on_event(event_type)
+
+app/main.py:20
+  /app/app/main.py:20: DeprecationWarning: 
+          on_event is deprecated, use lifespan event handlers instead.
+  
+          Read more about it in the
+          [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+          
+    @app.on_event("shutdown")
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+======================== 43 passed, 6 warnings in 5.34s ========================

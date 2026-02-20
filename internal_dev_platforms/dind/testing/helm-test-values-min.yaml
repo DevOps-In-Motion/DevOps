@@ -1,0 +1,53 @@
+# Minimal install: only wiki-chart resources (app + postgres sidecar, service, ingress).
+# No postgresql subchart, no Prometheus/Grafana, no OpenEBS.
+#
+# Usage (from repo root):
+#   helm install wiki ./wiki-chart -f ./testing/helm-test-values-min.yaml
+#
+# Test: kubectl port-forward service/wiki-api-service 8080:8080 & sleep 2 && ./testing/test_api.sh
+
+service:
+  name: wiki-api-service
+  port: 8080
+
+image:
+  repository: public.ecr.aws/i3h9f2j0/demos/wiki-backend
+  tag: latest
+  pullPolicy: Always
+
+deployment:
+  replicaCount: 1
+  sidecars:
+    postgresql:
+      enabled: true   # postgres in same pod (no postgresql subchart)
+      image:
+        repository: postgres
+        tag: "15-alpine"
+      database: wiki
+      username: postgres
+      password: postgres
+
+ingress:
+  enabled: true
+  name: wiki-api-ingress
+  className: nginx
+  hosts:
+    - host: localhost
+      paths:
+        - path: /users
+          pathType: Prefix
+        - path: /posts
+          pathType: Prefix
+
+# Subcharts / optional components disabled
+postgresql:
+  enabled: false
+
+openebs:
+  enabled: false
+
+prometheusStack:
+  enabled: false
+
+prometheus-stack:
+  enabled: false

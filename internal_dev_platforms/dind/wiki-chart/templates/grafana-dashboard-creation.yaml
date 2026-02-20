@@ -1,0 +1,14 @@
+{{- if .Values.prometheusStack.enabled }}
+# Pre-loaded by kube-prometheus-stack Grafana sidecar (label grafana_dashboard=1, searchNamespace: ALL).
+# Dashboard JSON is inlined (see _helpers.tpl wiki-chart.creationDashboardJson) so it works when this chart is used as a dependency.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "wiki-chart.fullname" . }}-grafana-dashboard-creation
+  labels:
+    {{- include "wiki-chart.labels" . | nindent 4 }}
+    grafana_dashboard: "1"
+data:
+  creation-dashboard.json: |
+{{ include "wiki-chart.creationDashboardJson" . | nindent 4 }}
+{{- end }}

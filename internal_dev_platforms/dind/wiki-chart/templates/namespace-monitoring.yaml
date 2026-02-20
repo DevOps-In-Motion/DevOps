@@ -1,0 +1,13 @@
+{{- if and (index .Values "prometheus-stack" "enabled") (index .Values "prometheusStack" "createMonitoringNamespace") }}
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ .Values.prometheusStack.monitoringNamespace | default "monitoring" }}
+  labels:
+    app.kubernetes.io/component: monitoring
+    helm.sh/chart: {{ include "wiki-chart.chart" . }}
+  annotations:
+    # Create namespace before subchart hooks (e.g. prometheus-operator admission webhooks) run on install and upgrade.
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "-10"
+{{- end }}

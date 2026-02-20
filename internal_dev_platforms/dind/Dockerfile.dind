@@ -1,0 +1,42 @@
+# Docker-in-Docker: run k3d and the wiki stack with NO host Docker socket.
+# REQUIRED: run with --privileged. Do NOT mount /var/run/docker.sock.
+#
+# Build:  docker build -f Dockerfile.dind -t wiki-k3d-dind .
+# Run:   docker run --rm -it --privileged --cgroupns=host -p 8080:8080 -p 8443:8443 wiki-k3d-dind
+#        Persist Postgres across restarts: add -v wiki-data:/data
+#        (Fallback if DinD fails: wiki-k3d image with -v /var/run/docker.sock:/var/run/docker.sock)
+#
+# Then:  http://localhost:8080/users  http://localhost:8080/posts  http://localhost:8080/grafana  (admin/admin)
+
+FROM docker:24-dind
+
+# Disable TLS so inner Docker uses plain unix socket (simpler for k3d).
+ENV DOCKER_TLS_CERTDIR=""
+
+# Install tools (Alpine in docker:dind)
+RUN apk add --no-cache \
+    bash \
+    curl \
+    git \
+    ca-certificates
+
+# kubectl (linux/amd64; for ARM build with appropriate arch)
+ARG KUBECTL_VERSION=1.30.2
+RUN curl -sSL "https://dl.k8s.io/release/v${KUBECTL_VERSION}/bin/linux/amd64/kubectl" -o /usr/local/bin/kubectl \
+    && chmod +x /usr/local/bin/kubectl
+
+# helm
+RUN curl -sSL https://get.helm.sh/helm-v3.16.3-linux-amd64.tar.gz | tar xz -C /tmp \
+    && mv /tmp/linux-amd64/helm /usr/local/bin/helm \
+    && rm -rf /tmp/linux-amd64
+
+# k3d
+RUN curl -s https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | bash
+
+WORKDIR /app
+
+COPY wiki-chart /app/wiki-chart
+COPY k3d /app/k3d
+RUN chmod +x /app/k3d/entrypoint.sh /app/k3d/entrypoint-dind.sh /app/k3d/debug-helm-install.sh /app/k3d/debug-k3d-cluster.sh
+
+ENTRYPOINT ["/app/k3d/entrypoint-dind.sh"]

@@ -1,0 +1,20 @@
+{{- if and .Values.deployment.sidecars.postgresql.enabled .Values.deployment.sidecars.postgresql.persistence.enabled }}
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: {{ include "wiki-chart.fullname" . }}-postgresql
+  labels:
+    {{- include "wiki-chart.labels" . | nindent 4 }}
+spec:
+  capacity:
+    storage: {{ .Values.deployment.sidecars.postgresql.persistence.size | default "1Gi" }}
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  {{- with .Values.deployment.sidecars.postgresql.persistence.storageClassName }}
+  storageClassName: {{ . | quote }}
+  {{- end }}
+  hostPath:
+    path: {{ .Values.deployment.sidecars.postgresql.persistence.hostPath | default (printf "/mnt/data/%s-postgresql" (include "wiki-chart.fullname" .)) }}
+    type: DirectoryOrCreate
+{{- end }}

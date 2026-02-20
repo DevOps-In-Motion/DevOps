@@ -1,0 +1,21 @@
+{{- if and .Values.prometheusStack.enabled .Values.prometheusStack.createServiceMonitor }}
+# When createServiceMonitor is false, the stack creates the ServiceMonitor via prometheus-stack.prometheus.prometheusSpec.additionalServiceMonitors (selector must match Service labels: app.kubernetes.io/name)
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "wiki-chart.fullname" . }}
+  labels:
+    {{- include "wiki-chart.labels" . | nindent 4 }}
+    release: {{ .Release.Name }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "wiki-chart.selectorLabels" . | nindent 6 }}
+  namespaceSelector:
+    matchNames:
+    - wiki-api
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: {{ .Values.prometheusStack.scrapeInterval | default "30s" }}
+{{- end }}

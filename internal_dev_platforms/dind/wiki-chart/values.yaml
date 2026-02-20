@@ -1,0 +1,300 @@
+# Default values for backend chart (Wiki API).
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+global:
+  environment: dev
+  image:
+    registry: public.ecr.aws/i3h9f2j0/demos/wiki-backend
+    tag: latest
+  # PostgreSQL: in-cluster host is the K8s Service name (release-name-postgresql when using the postgresql subchart).
+  # Override host if your Postgres is at a different service name.
+  postgresql:
+    host: ""   # leave empty to use <Release.Name>-postgresql in templates
+    port: 5432
+    database: wiki
+    username: postgres
+    # If set, the app gets DATABASE_URL from this secret (key: DATABASE_URL) instead of the chart-built secret.
+    # existingDatabaseSecret: "my-db-url-secret"
+
+# When using the postgresql subchart (postgresql.enabled: true), set auth so DATABASE_URL can be built.
+# Bitnami subchart service name is <Release.Name>-postgresql; host in-cluster is that.
+# Override image.tag so a valid image is used (chart default tag can be removed by Bitnami).
+postgresql:
+  enabled: true
+  image:
+    tag: "15"   # use major-version tag; override if pull fails (e.g. postgres:15 for official image)
+  auth:
+    postgresPassword: "postgres"   # postgres user password; also used to build DATABASE_URL for the app
+    database: wiki
+
+
+fastapi:
+  image_name: "" # if this is set then change the deployment image from public.ecr.aws/i3h9f2j0/demos/wiki-backend to whatever the value is
+
+# --- Deployment
+deployment:
+  # PostgreSQL sidecar - runs Postgres in the same pod (e.g. for dev or single-pod scenarios).
+  # When enabled, the app DATABASE_URL should use localhost:5432.
+
+  replicaCount: 3
+
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "128m"
+    limits:
+      memory: "512Mi"
+      cpu: "256m"
+  sidecars:
+    postgresql:
+      enabled: false
+      image:
+        repository: postgres
+        tag: "15"
+        pullPolicy: IfNotPresent
+      port: 5432
+      # Database, user, password - defaults to global.postgresql / postgresql.auth when empty
+      database: wiki
+      username: postgres
+      password: postgres  # or use existingSecret/secretKeyRef
+      persistence:
+        enabled: true
+        size: 1Gi
+        # storageClassName: ""  # omit for static PV binding
+        # hostPath: /mnt/data/wiki-postgresql  # for hostPath PV
+      resources: {}
+      #  limits:
+      #    memory: 1Gi
+      #  requests:
+      #    memory: 512Mi
+
+image:
+  repository: demos/wiki-backend:latest
+  pullPolicy: Always
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: ""
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Automatically mount a ServiceAccount's API credentials?
+  automount: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+podAnnotations: {}
+podLabels: {}
+
+podSecurityContext: {}
+  # fsGroup: 2000
+
+securityContext: {}
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+
+
+# -- Gateway Class Configuration
+gatewayClass:
+  # -- Enable GatewayClass. You can install any components without dependencies
+  enabled: false
+  # -- Gateway Class name. Default: helm release name.
+  name: wiki-gatewayclass
+  # -- Controller reference
+  controllerName: "gateway.envoyproxy.io/gatewayclass-controller"
+
+# -- Gateway API Configuration
+gateway:
+  # -- Enable Gateway API
+  enabled: false
+  # -- Gateway name. Default: helm release name
+  name: wiki-gateway
+  # -- Gateway Class name. Reference to the GatewayClass object. Default: helm release name.
+  gatewayClassName: wiki-gatewayclass
+  # -- Define listeners. Use any format according to the original Gateway API spec.
+  listeners:
+    # -- Listener for HTTP
+    - name: backend-http
+      protocol: HTTP
+      port: 8000
+    # -- Listener for HTTPS
+    - name: backend-https
+      hostname: mydomain.com
+      port: 443
+      protocol: HTTPS
+      tls:
+        mode: Terminate
+        certificateRefs:
+        - name: mydomain-com-tls
+          kind: Secret
+
+# --- Gateway API Routing (enable only when Gateway API CRDs are installed, e.g. cloud-provider-kind)
+httpRoute:
+  enabled: false
+  items:
+    - parentRefs:
+      - name: wiki-gateway
+        sectionName: backend-http 
+
+tcpRoute:
+  enabled: false
+  items:
+    - parentRefs:
+      - name: wiki-gateway
+        sectionName: backend-https  # listener name
+      # rules with backendRefs are injected by the template (points to chart service)
+
+# --- Services (port 8080 = wiki API; name/labels must match ServiceMonitor selector)
+service:
+  name: ""   # default: fullname (e.g. <release>-backend)
+  type: ClusterIP
+  port: 8080
+
+# Ingress: traffic flow is Ingress Controller → Ingress → Service → Deployment.
+# Set className to match your controller (e.g. nginx) so it admits this Ingress.
+ingress:
+  name: ing-wiki-backend
+  enabled: true
+  className: ""
+  annotations: {}
+  hosts:
+    # host: "" or omit for hostless (match any host); set e.g. localhost for local access
+    - host: ""
+      paths:
+        - path: /users
+          pathType: Prefix
+        - path: /posts
+          pathType: Prefix
+  tls: []
+  #  - secretName: backend-tls
+  #    hosts:
+  #      - localhost
+
+resources: {}
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # limits:
+  #   cpu: 100m
+  #   memory: 128Mi
+  # requests:
+  #   cpu: 100m
+  #   memory: 128Mi
+
+livenessProbe:
+  httpGet:
+    path: /
+    port: http
+readinessProbe:
+  httpGet:
+    path: /
+    port: http
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 100
+  targetCPUUtilizationPercentage: 80
+  # targetMemoryUtilizationPercentage: 80
+
+# Additional volumes on the output Deployment definition.
+volumes: []
+# - name: foo
+#   secret:
+#     secretName: mysecret
+#     optional: false
+
+# Additional volumeMounts on the output Deployment definition.
+volumeMounts: []
+# - name: foo
+#   mountPath: "/etc/foo"
+#   readOnly: true
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+# --- OpenEBS (optional): disable by default so the chart is lightweight for wiki + postgres + optional prometheus-stack
+openebs:
+  enabled: false
+
+# --- Prometheus stack (kube-prometheus-stack): scrape wiki metrics, pre-loaded dashboard
+prometheusStack:
+  enabled: true
+  scrapeInterval: 5s
+  # Prometheus service name for port-forward (must match the Prometheus svc in monitoring, e.g. prometheus-operator-prometheus).
+  prometheusServiceName: "prometheus-operator-prometheus"
+  # Grafana service name (when installed as subchart, often <Release.Name>-grafana, e.g. wiki-api-grafana).
+  grafanaServiceName: ""
+  # When true, this chart creates a ServiceMonitor (template). When false, the stack creates it via additionalServiceMonitors below.
+  createServiceMonitor: true
+  # Create the monitoring namespace if it does not exist (used by prometheus-stack subchart namespaceOverride).
+  createMonitoringNamespace: true
+  # Name of the namespace for Prometheus/Grafana/Alertmanager; must match prometheus-stack.*.namespaceOverride below.
+
+# When false, this chart does NOT deploy the Prometheus operator (subchart). Install kube-prometheus-stack
+# separately in the monitoring namespace so the operator runs there; the ServiceMonitor will be created by that install.
+prometheus-stack:
+  enabled: true
+  # Use stock-style names (prometheus-operator-*) instead of <release>-prometheus-stack-*
+  fullnameOverride: "prometheus-operator"
+  # Top-level: used by chart templates for components that don't have their own override.
+  namespaceOverride: monitoring
+  alertmanager:
+    enabled: true
+  prometheus:
+    enabled: true
+    prometheusSpec:
+      serviceMonitorSelectorNilUsesHelmValues: true
+      # ServiceMonitor for the wiki app (scrapes backend in default namespace).
+      # Selector must match Service labels: chart uses app.kubernetes.io/name: backend.
+      additionalServiceMonitors:
+        - name: wiki-api-servicemonitor
+          jobLabel: app.kubernetes.io/name
+          selector:
+            matchLabels:
+              app.kubernetes.io/name: backend
+          namespaceSelector:
+            matchNames:
+              - wiki-api
+          endpoints:
+            - port: http
+              path: /metrics
+              interval: 30s
+  grafana:
+    enabled: true
+    # Required so Grafana (subchart) deploys to monitoring; must match namespaceOverride above.
+    namespaceOverride: monitoring
+    adminPassword: admin
+    # Serve at /grafana/ and use placeholders so redirects go to same host/port with /grafana/ prefix.
+    grafana.ini:
+      server:
+        root_url: "%(protocol)s://%(domain)s:%(http_port)s/grafana/"
+        serve_from_sub_path: true
+    # Single Prometheus datasource via sidecar (avoids "Only one datasource per org" error).
+    sidecar:
+      datasources:
+        enabled: true
+        defaultDatasourceEnabled: true
+        url: http://prometheus-operator-prometheus.monitoring.svc.cluster.local:9090
+      dashboards:
+        enabled: true
+        label: grafana_dashboard
+        labelValue: "1"
+        searchNamespace: ALL
+    ingress:
+      enabled: false
