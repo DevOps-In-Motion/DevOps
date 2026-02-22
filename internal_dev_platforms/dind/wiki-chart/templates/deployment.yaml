@@ -40,13 +40,10 @@ spec:
             - name: PORT
               value: {{ .Values.service.port | quote }}
             - name: DATABASE_URL
-              {{- if .Values.deployment.sidecars.postgresql.enabled }}
+              {{- if not .Values.postgresql.enabled }}
               value: "postgresql://{{ .Values.deployment.sidecars.postgresql.username | default .Values.global.postgresql.username }}:{{ .Values.deployment.sidecars.postgresql.password | default .Values.postgresql.auth.postgresPassword }}@localhost:{{ .Values.deployment.sidecars.postgresql.port }}/{{ .Values.deployment.sidecars.postgresql.database | default .Values.global.postgresql.database }}"
               {{- else }}
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Values.global.postgresql.existingDatabaseSecret | default (printf "%s-database" (include "wiki-chart.fullname" .)) }}
-                  key: DATABASE_URL
+              value: "postgresql://{{ .Values.global.postgresql.username }}:{{ .Values.postgresql.auth.postgresPassword }}@{{ .Values.postgresql.externalReleaseName }}-postgresql.{{ .Values.postgresql.externalNamespace }}.svc.cluster.local:5432/{{ .Values.postgresql.auth.database }}"
               {{- end }}
           # Port name "http" is used by Service targetPort; Ingress → Service → this Deployment
           ports:
@@ -63,7 +60,7 @@ spec:
           volumeMounts:
             {{- toYaml . | nindent 12 }}
           {{- end }}
-        {{- if .Values.deployment.sidecars.postgresql.enabled }}
+        {{- if not .Values.postgresql.enabled }}
         - name: postgresql
           image: "{{ .Values.deployment.sidecars.postgresql.image.repository }}:{{ .Values.deployment.sidecars.postgresql.image.tag | default "15" }}"
           imagePullPolicy: {{ .Values.deployment.sidecars.postgresql.image.pullPolicy }}
@@ -80,15 +77,15 @@ spec:
               protocol: TCP
           resources:
             {{- toYaml .Values.deployment.sidecars.postgresql.resources | nindent 12 }}
-          {{- if and .Values.deployment.sidecars.postgresql.persistence.enabled }}
+          {{- if .Values.deployment.sidecars.postgresql.persistence.enabled }}
           volumeMounts:
             - name: postgresql-data
               mountPath: /var/lib/postgresql/data
           {{- end }}
         {{- end }}
-      {{- if or (and .Values.deployment.sidecars.postgresql.enabled .Values.deployment.sidecars.postgresql.persistence.enabled) .Values.volumes }}
+      {{- if or (and (not .Values.postgresql.enabled) .Values.deployment.sidecars.postgresql.persistence.enabled) .Values.volumes }}
       volumes:
-        {{- if and .Values.deployment.sidecars.postgresql.enabled .Values.deployment.sidecars.postgresql.persistence.enabled }}
+        {{- if and (not .Values.postgresql.enabled) .Values.deployment.sidecars.postgresql.persistence.enabled }}
         - name: postgresql-data
           persistentVolumeClaim:
             claimName: {{ include "wiki-chart.fullname" . }}-postgresql

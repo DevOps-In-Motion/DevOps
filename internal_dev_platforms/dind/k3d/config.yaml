@@ -19,6 +19,12 @@ ports:
   - port: 8080:80
     nodeFilters:
       - loadbalancer
+  - port: 3000:80
+    nodeFilters:
+      - loadbalancer
+  - port: 9090:80
+    nodeFilters:
+      - loadbalancer
   - port: 8443:443
     nodeFilters:
       - loadbalancer
@@ -30,9 +36,27 @@ ports:
 #       - server:*
 #       - agent:*
 
+# HelmChartConfig so Traefik watches monitoring namespace (Grafana Ingress). K3s applies any file in
+# /var/lib/rancher/k3s/server/manifests/ and merges HelmChartConfig with the built-in Traefik HelmChart.
+# See: https://docs.k3s.io/helm#customizing-packaged-components-with-helmchartconfig
+files:
+  - destination: /var/lib/rancher/k3s/server/manifests/traefik-helmconfig.yaml
+    nodeFilters:
+      - server:*
+    source: |
+      apiVersion: helm.cattle.io/v1
+      kind: HelmChartConfig
+      metadata:
+        name: traefik
+        namespace: kube-system
+      spec:
+        valuesContent: |-
+          additionalArguments:
+            - "--providers.kubernetesingress.namespaces=default,monitoring,kube-system"
+
 options:
   k3d:
     wait: true
     timeout: "300s"
   runtime:
-    serversMemory: "4g"
+    serversMemory: "10g"

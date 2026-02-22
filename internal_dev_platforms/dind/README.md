@@ -1,6 +1,6 @@
-# DinD Internal Platform Example
+# Wiki API (Nebula Aurora Assignment)
 
-This repo contains a API service (FastAPI + PostgreSQL) and a Helm chart to run it on Kubernetes. It's an example of how to use DinD for some local testings. This directory will eventually migrate into an IDP based on DinD for use with ECS or even K8s. As it stands now this is just a DinD example.
+This repo contains a Wiki API service (FastAPI + PostgreSQL) and a Helm chart to run it on Kubernetes. You can run the service in two ways:
 
 1. **Helm chart** — install the chart into an existing cluster (e.g. minikube, kind, or k3d you created yourself).
 2. **k3d + root Dockerfile** — use the root Dockerfile to build an image that creates a k3d cluster and installs the chart inside a container.

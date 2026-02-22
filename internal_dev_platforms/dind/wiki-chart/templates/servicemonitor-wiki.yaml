@@ -13,7 +13,7 @@ spec:
       {{- include "wiki-chart.selectorLabels" . | nindent 6 }}
   namespaceSelector:
     matchNames:
-    - wiki-api
+    - {{ .Release.Namespace }}
   endpoints:
     - port: http
       path: /metrics

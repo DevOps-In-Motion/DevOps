@@ -40,6 +40,7 @@ ingress:
   className: traefik
   annotations:
     ingress.kubernetes.io/ssl-redirect: "false"
+  # Do NOT add /grafana here: it would route to the wiki backend (404). Grafana is exposed by a separate Ingress in the monitoring namespace.
   hosts:
     - host: localhost
       paths:
@@ -50,7 +51,7 @@ ingress:
         - path: /metrics
           pathType: Prefix
         - path: /
-          pathType: Prefix
+          pathType: Exact
 
 postgresql:
   enabled: false
@@ -66,11 +67,147 @@ openebs:
 
 prometheusStack:
   enabled: true
-  # Grafana runs in monitoring namespace as prometheus-operator-grafana (subchart fullnameOverride)
-  grafanaServiceName: prometheus-operator-grafana
+  # Grafana service name: when stack is a subchart of release "wiki", the Grafana service is "wiki-grafana" (not prometheus-operator-grafana). Must match the Service in monitoring.
+  grafanaServiceName: wiki-grafana
+  # Grafana-only Ingress (separate from deployment ingress). Exposes Grafana at localhost:8080/grafana.
+  grafanaIngress:
+    enabled: true
+    className: traefik
+    path: /grafana
+    pathType: Prefix
+    hosts:
+      - host: localhost
+    annotations:
+      ingress.kubernetes.io/ssl-redirect: "false"
 
 # Grafana login: always admin / admin
 prometheus-stack:
   enabled: true
   grafana:
     adminPassword: admin
+    # Ingress path is /grafana (wiki-chart ingress-grafana.yaml). Grafana must use same subpath for redirects/assets.
+    grafana.ini:
+      server:
+        root_url: "%(protocol)s://%(domain)s:%(http_port)s/grafana/"
+        serve_from_sub_path: true
+    # Disable the kube-prometheus-stack Grafana subchart's Ingress (default path /). We use our chart's grafanaIngress (path /grafana) instead.
+    ingress:
+      enabled: false
+      ingressClassName: traefik
+    env:
+      GF_DATABASE_MAX_OPEN_CONN: "10"
+    # Avoid OOM in small clusters (common cause of CrashLoopBackOff)
+    resources:
+      requests:
+        memory: "128Mi"
+        cpu: "50m"
+      limits:
+        memory: "512Mi"
+        cpu: "500m"
+
+    sidecar:
+      dashboards:
+        enabled: true
+        label: grafana_dashboard
+        labelValue: "1"
+        searchNamespace: ALL
+      # Prometheus service in monitoring ns is prometheus-operator-prometheus (fullnameOverride)
+    datasources:
+      datasources.yaml:
+        apiVersion: 1
+        datasources:
+        - name: Prometheus
+          type: prometheus
+          url: http://prometheus-operator-prometheus.monitoring.svc.cluster.local:9090
+          uid: prometheus
+          access: proxy
+          isDefault: false
+
+    dashboards:
+      default:
+        creation-dashboard:
+          json: |
+            {
+              "annotations": { "list": [] },
+              "editable": true,
+              "fiscalYearStartMonth": 0,
+              "graphTooltip": 0,
+              "id": null,
+              "links": [],
+              "liveNow": false,
+              "panels": [
+                {
+                  "datasource": { "type": "prometheus", "uid": "prometheus" },
+                  "fieldConfig": {
+                    "defaults": {
+                      "color": { "mode": "palette-classic" },
+                      "custom": {
+                        "axisCenteredZero": false,
+                        "axisLabel": "",
+                        "axisPlacement": "auto",
+                        "drawStyle": "line",
+                        "fillOpacity": 10,
+                        "gradientMode": "none",
+                        "hideFrom": { "legend": false, "tooltip": false, "viz": false },
+                        "lineInterpolation": "linear",
+                        "lineWidth": 1,
+                        "pointSize": 5,
+                        "scaleDistribution": { "type": "linear" },
+                        "showPoints": "auto",
+                        "spanNulls": false,
+                        "stacking": { "group": "A", "mode": "none" },
+                        "thresholdsStyle": { "mode": "off" }
+                      },
+                      "mappings": [],
+                      "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                          { "color": "green", "value": null },
+                          { "color": "red", "value": 80 }
+                        ]
+                      },
+                      "unit": "short"
+                    },
+                    "overrides": []
+                  },
+                  "gridPos": { "h": 8, "w": 24, "x": 0, "y": 0 },
+                  "id": 1,
+                  "options": {
+                    "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }
+                  },
+                  "targets": [
+                    {
+                      "datasource": { "type": "prometheus", "uid": "prometheus" },
+                      "editorMode": "code",
+                      "expr": "rate(users_created_total[5m])",
+                      "legendFormat": "Users created (rate)",
+                      "range": true,
+                      "refId": "A"
+                    },
+                    {
+                      "datasource": { "type": "prometheus", "uid": "prometheus" },
+                      "editorMode": "code",
+                      "expr": "rate(posts_created_total[5m])",
+                      "legendFormat": "Posts created (rate)",
+                      "hide": false,
+                      "range": true,
+                      "refId": "B"
+                    }
+                  ],
+                  "title": "Users and posts creation rate",
+                  "type": "timeseries"
+                }
+              ],
+              "refresh": "10s",
+              "schemaVersion": 38,
+              "style": "dark",
+              "tags": ["wiki", "creation"],
+              "templating": { "list": [] },
+              "time": { "from": "now-1h", "to": "now" },
+              "timepicker": {},
+              "timezone": "",
+              "title": "creation",
+              "uid": "creation-dashboard-678",
+              "version": 1,
+              "weekStart": ""
+            }

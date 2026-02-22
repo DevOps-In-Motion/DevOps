@@ -17,11 +17,15 @@ global:
     # If set, the app gets DATABASE_URL from this secret (key: DATABASE_URL) instead of the chart-built secret.
     # existingDatabaseSecret: "my-db-url-secret"
 
+# When true: use external PostgreSQL (Bitnami in monitoring); no sidecar. DATABASE_URL points to externalReleaseName-postgresql.externalNamespace.
+# When false: run PostgreSQL as a sidecar in the wiki pod; DATABASE_URL is localhost.
 # When using the postgresql subchart (postgresql.enabled: true), set auth so DATABASE_URL can be built.
 # Bitnami subchart service name is <Release.Name>-postgresql; host in-cluster is that.
-# Override image.tag so a valid image is used (chart default tag can be removed by Bitnami).
 postgresql:
   enabled: true
+  # External Postgres (when enabled: true): release name and namespace, e.g. helm install my-postgres bitnami/postgresql -n monitoring
+  externalReleaseName: my-postgres
+  externalNamespace: monitoring
   image:
     tag: "15"   # use major-version tag; override if pull fails (e.g. postgres:15 for official image)
   auth:
@@ -176,6 +180,8 @@ ingress:
           pathType: Prefix
         - path: /posts
           pathType: Prefix
+        - path: /metrics
+          pathType: Prefix
   tls: []
   #  - secretName: backend-tls
   #    hosts:
@@ -240,6 +246,19 @@ prometheusStack:
   prometheusServiceName: "prometheus-operator-prometheus"
   # Grafana service name (when installed as subchart, often <Release.Name>-grafana, e.g. wiki-api-grafana).
   grafanaServiceName: ""
+  # Ingress for Grafana only (separate from deployment ingress). Chart creates an Ingress in the monitoring namespace.
+  grafanaIngress:
+    enabled: true
+    className: "" # e.g. traefik or nginx; required when enabled
+    path: /grafana
+    pathType: Prefix
+    hosts:
+      - host: localhost
+    annotations: {}
+    labels: {}
+    # tls: []
+    #   - secretName: grafana-tls
+    #     hosts: [localhost]
   # When true, this chart creates a ServiceMonitor (template). When false, the stack creates it via additionalServiceMonitors below.
   createServiceMonitor: true
   # Create the monitoring namespace if it does not exist (used by prometheus-stack subchart namespaceOverride).

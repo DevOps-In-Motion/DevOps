@@ -36,7 +36,11 @@ Values in `k3d/values.yaml`: `ingress.className: traefik`, `postgresql.enabled` 
    If `public.ecr.aws/i3h9f2j0/demos/wiki-backend:latest` or Helm repos are unreachable, install will fail.  
    **Fix:** Ensure network access and image availability (or override `image.repository` / `image.tag` in values).
 
-4. **Grafana**  
+4. **No space left on device (DinD)**  
+   The inner Docker needs several GB for k3d-tools and k3s images. If the container runs out of disk, pulls fail.  
+   **Fix:** Free host disk; run `docker system prune -af` and remove old containers/images; or use the socket-based run so k3d uses the host’s Docker and disk.
+
+5. **Grafana**  
    Login is always **admin / admin** (set in `k3d/values.yaml` via `prometheus-stack.grafana.adminPassword`).
 
 ### Quick run: privileged DinD (no Docker socket) — recommended
@@ -47,6 +51,7 @@ Run with **`--privileged`**. **Do not** mount the host Docker socket.
 
 - **Linux host** is most reliable (DinD on Docker Desktop for Mac often hits cgroup/VM limits and hangs).
 - **Do not set a memory limit** on the container (or give it **≥ 6GB**). The inner Docker + k3d cluster need headroom.
+- **At least ~5GB free disk** for the DinD container (k3d/k3s images). A full run (DinD + wiki-data volume) typically uses **~10–12GB** in Docker volumes and images. To reclaim after stopping the container: `docker volume prune -f` (and `docker system prune -af` if needed). If you see `no space left on device`, free space and prune; or use the 5GB cap script or the socket fallback below.
 - Use the **exact** run below (`--privileged`, `--cgroupns=host`, **no** `-v docker.sock`).
 
 From repo root:
@@ -62,6 +67,16 @@ docker run --rm -it --privileged --cgroupns=host -p 8080:8080 -p 8443:8443 -v wi
 Or use the helper script: `./testing/test-k3d.sh` (builds then runs with privileged, no socket, and `wiki-data:/data` for persistence).
 
 **Data persistence (Option 1):** With `-v wiki-data:/data`, Postgres data is stored on the host volume `wiki-data`. If you stop the container and start a new one (same volume), the new cluster will use the same data after Helm install runs again.
+
+**Capping DinD disk to 5GB (Linux only):** Docker has no per-container disk limit. To cap the inner Docker (and thus k3d images/containers) at 5GB, use a 5GB filesystem mounted at `/var/lib/docker`:
+
+```bash
+# From repo root (Linux). Creates a 5GB image, mounts it, runs DinD with that as inner Docker data.
+chmod +x ./k3d/run-dind-5g.sh
+./k3d/run-dind-5g.sh
+```
+
+The script creates `k3d/dind-5g-data/dind-5g.img` (5GB), mounts it at `k3d/dind-5g-data/mount`, and runs the container with `-v .../mount:/var/lib/docker`. Optional: `DIND_5G_DIR=/path DIND_5G_SIZE_MB=5120 ./k3d/run-dind-5g.sh`. On **Mac/Windows** there is no built-in per-container cap; limit overall Docker disk in Docker Desktop → Settings → Resources → Disk image size.
 
 Then open: **http://localhost:8080/users**, **http://localhost:8080/posts**, **http://localhost:8080/grafana** (admin / admin).
 

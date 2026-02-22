@@ -95,10 +95,26 @@ echo "=== [2/3] Installing wiki-chart (release: $RELEASE_NAME). This may take 5â
 echo "  To debug from another terminal:  docker exec -it wiki-k3d-dind sh"
 echo "  Then inside:  kubectl describe pod <name> -n $NAMESPACE  ;  kubectl get events -n $NAMESPACE --sort-by='.lastTimestamp'"
 echo ""
-# Background: print pod status every 60s so you can see progress or why it's stuck (Helm --wait is silent)
+# Background: print pod status every 60s (release ns + monitoring) so you always see progress
 PROG_PID=""
 trap '[[ -n "$PROG_PID" ]] && kill "$PROG_PID" 2>/dev/null' EXIT
-( for i in $(seq 1 20); do sleep 60; echo ""; echo "  --- pod status ($i min) ---"; kubectl get pods -n "$NAMESPACE" --no-headers 2>/dev/null | head -20 || true; done ) &
+( for i in $(seq 1 20); do
+    sleep 60
+    echo ""
+    echo "  --- pod status ($i min) ---"
+    OUT=$(kubectl get pods -n "$NAMESPACE" --no-headers 2>/dev/null)
+    OUT_MON=$(kubectl get pods -n monitoring --no-headers 2>/dev/null)
+    if [[ -n "$OUT" ]]; then
+      echo "$OUT" | head -25
+    fi
+    if [[ -n "$OUT_MON" ]]; then
+      echo "$OUT_MON" | head -15
+    fi
+    if [[ -z "$OUT" && -z "$OUT_MON" ]]; then
+      echo "  (no pods yet or kubectl not ready)"
+    fi
+  done
+) &
 PROG_PID=$!
 helm upgrade --install "$RELEASE_NAME" "$CHART_DIR" \
   --namespace "$NAMESPACE" \

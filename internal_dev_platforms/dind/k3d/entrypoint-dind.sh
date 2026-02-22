@@ -24,10 +24,22 @@ for i in $(seq 1 60); do
   sleep 1
 done
 
+# Check disk space before any pulls (avoid 'no space left on device' with a clear message)
+AVAIL=$(df -m / 2>/dev/null | awk 'NR==2 {print $4}')
+if [[ -n "$AVAIL" && "$AVAIL" -lt 5120 ]]; then
+  echo "ERROR: Low disk space (${AVAIL}MB free). DinD needs ~5GB+ for images."
+  echo "  On the HOST run: ./k3d/cleanup.sh  ;  docker system prune -af  ;  docker volume prune -f"
+  echo "  Then ensure the host has 10GB+ free (df -h) and run again."
+  echo "  Or use host socket: docker run -v /var/run/docker.sock:/var/run/docker.sock -p 8080:8080 -p 8443:8443 wiki-k3d"
+  exit 1
+fi
+
 # Verify Docker can create containers (catches broken DinD early)
 echo "Verifying Docker can create containers..."
 if ! docker run --rm alpine true 2>/dev/null; then
-  echo "ERROR: Docker cannot run containers. DinD may be broken (e.g. cgroups). Ensure --privileged and no Docker socket."
+  echo "ERROR: Docker cannot run containers. DinD may be broken (e.g. cgroups) or out of disk (no space left on device)."
+  echo "  If you saw 'no space left on device' above: on the HOST run: ./k3d/cleanup.sh  ;  docker system prune -af  ;  docker volume prune -f  ;  then retry."
+  echo "  Otherwise ensure --privileged and no Docker socket."
   exit 1
 fi
 echo "Docker OK. Creating k3d cluster..."
