@@ -1,4 +1,4 @@
-# GKE high availability
+s# GKE high availability
 gcloud container node-pools update <NODE_POOL_NAME> \
   --region=<REGION> \
   --cluster=<CLUSTER_NAME> \
