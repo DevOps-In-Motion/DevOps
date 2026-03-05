@@ -1,6 +1,6 @@
-# Wiki API (Nebula Aurora Assignment)
+# D in D IDP w/ Simple API Example For Modern Cloud
 
-This repo contains a Wiki API service (FastAPI + PostgreSQL) and a Helm chart to run it on Kubernetes. You can run the service in two ways:
+This repo contains a API service (FastAPI + PostgreSQL) and a Helm chart to run it on Kubernetes. This is meant to be a solution for an IDP. In particular, by containerize, hence, DinD. Yet, you could do the same as a Namespace As A Service as well. Check the pipelines folder for good deployment examples. I will also build a frontend that works with the pipeline if you ask... You can run the service in two ways:
 
 1. **Helm chart** — install the chart into an existing cluster (e.g. minikube, kind, or k3d you created yourself).
 2. **k3d + root Dockerfile** — use the root Dockerfile to build an image that creates a k3d cluster and installs the chart inside a container.
