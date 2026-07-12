@@ -1,0 +1,22 @@
+crds:
+  enabled: true
+
+# Workers are tainted workload=nginx; control-plane may be tainted too.
+# Tolerate both so cert-manager can schedule on Ready workers in this lab.
+tolerations: &cmTolerations
+  - key: workload
+    operator: Equal
+    value: nginx
+    effect: NoSchedule
+  - key: node-role.kubernetes.io/control-plane
+    operator: Exists
+    effect: NoSchedule
+
+webhook:
+  tolerations: *cmTolerations
+
+cainjector:
+  tolerations: *cmTolerations
+
+startupapicheck:
+  tolerations: *cmTolerations

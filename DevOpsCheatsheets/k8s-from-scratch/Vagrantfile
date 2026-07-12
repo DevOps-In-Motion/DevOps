@@ -1,0 +1,90 @@
+# Vagrantfile
+Vagrant.configure("2") do |config|
+  config.vm.box = "bento/ubuntu-24.04"  # or a 26.04 box once available
+
+  # Fix DNS: force IPv4 public resolvers so hostname lookups (apt, k8s repos) work reliably
+  config.vm.provision "shell", inline: <<-SHELL
+    mkdir -p /etc/systemd/resolved.conf.d
+    cat <<EOF > /etc/systemd/resolved.conf.d/dns.conf
+[Resolve]
+DNS=1.1.1.1 8.8.8.8
+Domains=~.
+DNSStubListener=yes
+EOF
+    systemctl restart systemd-resolved
+    resolvectl status
+  SHELL
+
+  config.vm.provision "shell", path: "scripts/vm-node-setup.sh"
+
+  config.vm.define "controlplane" do |node|
+    node.vm.network "private_network", ip: "192.168.56.101"
+    node.vm.provision "shell", inline: <<-SHELL
+      hostnamectl set-hostname controlplane
+      grep -q controlplane /etc/hosts || echo "127.0.1.1 controlplane" >> /etc/hosts
+    SHELL
+
+    node.vm.provision "shell", path: "scripts/vm-controlplane-init.sh"
+    node.vm.provision "shell", inline: <<-SHELL
+      sudo kubeadm token create --print-join-command | sudo tee /vagrant/join-command.sh
+      sudo chmod +x /vagrant/join-command.sh
+    SHELL
+  end
+
+  config.vm.define "worker1" do |node|
+    node.vm.provision "shell", inline: <<-SHELL
+      hostnamectl set-hostname worker1
+      grep -q worker1 /etc/hosts || echo "127.0.1.1 worker1" >> /etc/hosts
+    SHELL
+    node.vm.network "private_network", ip: "192.168.56.102"
+    # Waits for /vagrant/join-command.sh to exist, then joins the cluster
+    node.vm.provision "shell", inline: <<-SHELL
+      if [ -f /etc/kubernetes/kubelet.conf ]; then
+        echo "Node already joined, skipping."
+        exit 0
+      fi
+
+      TIMEOUT=180
+      ELAPSED=0
+      while [ ! -f /vagrant/join-command.sh ]; do
+        if [ "$ELAPSED" -ge "$TIMEOUT" ]; then
+          echo "Timed out waiting for /vagrant/join-command.sh" >&2
+          exit 1
+        fi
+        echo "Waiting for join-command.sh from control plane..."
+        sleep 5
+        ELAPSED=$((ELAPSED + 5))
+      done
+
+      sudo bash /vagrant/join-command.sh
+    SHELL
+  end
+
+  config.vm.define "worker2" do |node|
+    node.vm.provision "shell", inline: <<-SHELL
+      hostnamectl set-hostname worker2
+      grep -q worker2 /etc/hosts || echo "127.0.1.1 worker2" >> /etc/hosts
+    SHELL
+    # Waits for /vagrant/join-command.sh to exist, then joins the cluster
+    node.vm.provision "shell", inline: <<-SHELL
+      if [ -f /etc/kubernetes/kubelet.conf ]; then
+        echo "Node already joined, skipping."
+        exit 0
+      fi
+
+      TIMEOUT=180
+      ELAPSED=0
+      while [ ! -f /vagrant/join-command.sh ]; do
+        if [ "$ELAPSED" -ge "$TIMEOUT" ]; then
+          echo "Timed out waiting for /vagrant/join-command.sh" >&2
+          exit 1
+        fi
+        echo "Waiting for join-command.sh from control plane..."
+        sleep 5
+        ELAPSED=$((ELAPSED + 5))
+      done
+
+      sudo bash /vagrant/join-command.sh
+    SHELL
+  end
+end
