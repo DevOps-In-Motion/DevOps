@@ -1,0 +1,105 @@
+# QA — RaSCaaS Helm overlay
+# Account: 650251729525 | Region: us-west-2
+# Public URL: https://rascaas.qa.kovr.ai
+#
+# ── Cognito (qa-kovr-pool) ─────────────────────────────────────────────
+#   Issuer:  https://cognito-idp.us-west-2.amazonaws.com/us-west-2_R0hOOoYBb
+#   Pool:    qa-kovr-pool (us-west-2_R0hOOoYBb)
+#   ARN:     arn:aws:cognito-idp:us-west-2:650251729525:userpool/us-west-2_R0hOOoYBb
+#
+# ── Endpoint (all four must match) ─────────────────────────────────────
+#   1. Gateway HTTPS  → helm/_crds/gateway/rascaas-gateway-https.qa.yaml
+#   2. HTTPRoutes     → gateway.hostname below
+#   3. App / OIDC     → APP_BASE_URL, redirectUrl below
+#   4. Cognito client → callback https://rascaas.qa.kovr.ai/oauth2/callback
+#
+# ── Before helm upgrade ──────────────────────────────────────────────────
+#   kubectl apply -f helm/_crds/gateway/rascaas-gateway-base.yaml
+#   # Edit IAM cert ARN in rascaas-gateway-https.qa.yaml, then:
+#   kubectl apply -f helm/_crds/gateway/rascaas-gateway-https.qa.yaml
+#   kubectl apply -f helm/_crds/secrets/plain-secrets.yaml
+#   DNS: rascaas.qa.kovr.ai → kubectl get gateway rascaas-gateway -n rascaas
+#
+#   helm dependency update ./helm/rascaas
+#   helm upgrade --install rascaas ./helm/rascaas -n rascaas -f helm/_values/qa-install-values.yaml
+
+keycloak:
+  enabled: false
+
+secrets:
+  mode: plain
+
+gateway:
+  enabled: true
+  name: rascaas-gateway
+  hostname: rascaas.qa.kovr.ai
+
+fastapi:
+  name: rascaas
+  serviceAccountName: rascaas-sa
+  image: 650251729525.dkr.ecr.us-west-2.amazonaws.com/rascaas:latest
+  imagePullPolicy: IfNotPresent
+  replicas: 1
+  port: 8000
+  secretName: fastapi-secrets
+  secretEnv:
+    GITHUB_PRIVATE_KEY: github-private-key
+  minReplicas: 1
+  maxReplicas: 3
+  resources:
+    requests:
+      memory: 256Mi
+      cpu: 500m
+    limits:
+      memory: 512Mi
+      cpu: 1000m
+  livenessProbe:
+    path: /health
+    initialDelaySeconds: 10
+    periodSeconds: 10
+  readinessProbe:
+    path: /ready
+    initialDelaySeconds: 5
+    periodSeconds: 10
+  env:
+    GITHUB_APP_ID: "3825031"
+    GITHUB_INSTALLATION_ID: "134904362"
+    GITHUB_DISPATCH_REPO: "kovr-ai/platform"
+    DEFAULT_WORKFLOW: "uat-deploy.yml"
+    ENVIRONMENT: "production"
+    APP_BASE_URL: "https://rascaas.qa.kovr.ai"
+    OIDC_ISSUER_URL: "https://cognito-idp.us-west-2.amazonaws.com/us-west-2_R0hOOoYBb"
+    OIDC_CLIENT_ID: "46ghm6ijcf2f0rshtasi9tvg8m"
+    TRUST_OAUTH2_PROXY_IDENTITY: "true"
+
+oauth2proxy:
+  name: oauth2proxy
+  serviceAccountName: oauth2proxy-sa
+  image: quay.io/oauth2-proxy/oauth2-proxy:v7.7.1
+  imagePullPolicy: IfNotPresent
+  replicas: 1
+  port: 4180
+  secretName: oauth2proxy-secret
+  clientSecretKey: client-secret
+  cookieSecretKey: cookie-secret
+  oidcIssuerUrl: "https://cognito-idp.us-west-2.amazonaws.com/us-west-2_R0hOOoYBb"
+  clientId: "46ghm6ijcf2f0rshtasi9tvg8m"
+  redirectUrl: "https://rascaas.qa.kovr.ai/oauth2/callback"
+  cookieSecure: true
+  passAccessToken: true
+  setXAuthRequest: true
+  skipProviderButton: true
+  emailDomains: "*"
+  resources:
+    requests:
+      memory: 64Mi
+      cpu: 50m
+    limits:
+      memory: 128Mi
+      cpu: 200m
+  livenessProbe:
+    initialDelaySeconds: 0
+    periodSeconds: 10
+  readinessProbe:
+    initialDelaySeconds: 0
+    periodSeconds: 10

@@ -1,0 +1,16 @@
+{{- if .Values.fastapi.port }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.fastapi.name }}
+  labels:
+    {{- include "rascaas.fastapi.labels" . | nindent 4 }}
+spec:
+  selector:
+    {{- include "rascaas.fastapi.selectorLabels" . | nindent 4 }}
+  ports:
+    - name: {{ .Values.fastapi.name }}-port
+      protocol: TCP
+      port: {{ .Values.fastapi.port }}
+      targetPort: {{ .Values.fastapi.port }}
+{{- end }}

@@ -1,0 +1,124 @@
+# values.yaml
+
+# Bundled Keycloak (Bitnami subchart) — same namespace as RaSCaaS; wires oauth2-proxy OIDC automatically.
+keycloak:
+  enabled: true
+  realm: rascaas
+  clientId: platform-ui
+  clientSecret: rascaas-local-client-secret
+  # Browser-facing OIDC issuer base (no trailing slash). Empty = in-cluster http://<release>-keycloak
+  publicBaseUrl: ""
+  httpRelativePath: /
+  exposeRoute:
+    enabled: false
+    hostname: auth.example.com
+    servicePort: 80
+  # --- Bitnami keycloak subchart (https://github.com/bitnami/charts/tree/main/bitnami/keycloak) ---
+  auth:
+    adminUser: admin
+    adminPassword: admin
+  production: false
+  proxyHeaders: xforwarded
+  hostnameStrict: false
+  extraEnvVars:
+    - name: KC_HOSTNAME_STRICT
+      value: "false"
+  resources:
+    requests:
+      memory: 768Mi
+      cpu: 500m
+    limits:
+      memory: 1536Mi
+      cpu: 1000m
+  keycloakConfigCli:
+    enabled: true
+    # ConfigMap from templates/keycloak-realm-configmap.yaml — name must match release (default: rascaas-keycloak-realm)
+    existingConfigmap: rascaas-keycloak-realm
+  postgresql:
+    enabled: true
+    auth:
+      postgresPassword: rascaas-keycloak-db
+      password: rascaas-keycloak-db
+
+secrets:
+  # csi-driver — AWS Secrets Manager via SecretProviderClass + secrets-store CSI driver.
+  #              SPC secretObjects sync fastapi-secrets / oauth2proxy-secret for env injection.
+  # plain       — pre-created Secrets: copy plain-secrets.example.yaml → plain-secrets.yaml, kubectl apply.
+  mode: plain
+  secretProviderClass: rascaas-secrets-provider
+  mountPath: /mnt/secrets-store
+
+gateway:
+  enabled: true
+  name: rascaas-gateway
+  namespace: ""  # defaults to Helm release namespace
+  # Public hostname (HTTPRoute hostnames). Gateway HTTPS listener: helm/_crds/gateway/rascaas-gateway-https.template.yaml
+  hostname: ""
+
+fastapi:
+  name: rascaas
+  image: awsamazon.com/us:latest/rascaas-ui
+  replicas: 1
+  imagePullPolicy: IfNotPresent
+  env:
+    GITHUB_APP_ID: "12345"
+    GITHUB_INSTALLATION_ID: "67890"
+    OIDC_ISSUER_URL: "https://idp.sub.host.co"
+    OIDC_CLIENT_ID: "platform-ui"
+    ENVIRONMENT: "production"
+    APP_BASE_URL: "https://rascaas.example.com"
+  secretName: fastapi-secrets
+  secretEnv:
+    GITHUB_PRIVATE_KEY: github-private-key
+  minReplicas: 1
+  maxReplicas: 3
+  resources:
+    requests:
+      memory: 256Mi
+      cpu: 500m
+    limits:
+      memory: 512Mi
+      cpu: 1000m
+  port: 8000
+  labels: {}
+  livenessProbe:
+    path: /health
+    initialDelaySeconds: 10
+    periodSeconds: 10
+  readinessProbe:
+    path: /ready
+    initialDelaySeconds: 5
+    periodSeconds: 10
+
+oauth2proxy:
+  image: quay.io/oauth2-proxy/oauth2-proxy:v7.7.1
+  name: oauth2proxy
+  replicas: 1
+  upstreamUrl: ""
+  oidcIssuerUrl: "https://idp.sub.host.co"
+  clientId: "platform-ui"
+  redirectUrl: "https://rascaas.example.com/oauth2/callback"
+  secretName: oauth2proxy-secret
+  clientSecretKey: client-secret
+  cookieSecretKey: cookie-secret
+  port: 4180
+  imagePullPolicy: IfNotPresent
+  passAccessToken: true
+  setXAuthRequest: true
+  cookieSecure: false
+  skipProviderButton: true
+  emailDomains: "*"
+  labels: {}
+  resources:
+    requests:
+      memory: 64Mi
+      cpu: 50m
+    limits:
+      memory: 128Mi
+      cpu: 200m
+  livenessProbe:
+    initialDelaySeconds: 0
+    periodSeconds: 10
+  readinessProbe:
+    initialDelaySeconds: 0
+    periodSeconds: 10

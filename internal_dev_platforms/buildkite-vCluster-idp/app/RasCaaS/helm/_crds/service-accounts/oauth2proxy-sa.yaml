@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: oauth2proxy-sa
+  namespace: rascaas
+  labels:
+    app.kubernetes.io/name: oauth2proxy
+    app.kubernetes.io/component: oauth2-proxy
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::ACCOUNT_ID:role/rascaas-secrets-reader

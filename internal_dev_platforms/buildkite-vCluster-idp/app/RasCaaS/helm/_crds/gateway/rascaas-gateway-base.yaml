@@ -1,0 +1,62 @@
+# RaSCaaS Gateway — phase 1: ALB with HTTP listener (:80).
+# PREREQUISITE: Gateway API + AWS LBC gateway CRDs (see helm/_crds/README.md §1).
+# Apply before the Helm chart HTTPRoutes:
+#   kubectl apply -f helm/_crds/gateway/rascaas-gateway-base.yaml
+#
+# After status.addresses is set, apply HTTPS:
+#   QA:  helm/_crds/gateway/rascaas-gateway-https.qa.yaml (edit IAM cert ARN first)
+#   Other: rascaas-gateway-https.template.yaml (sed placeholders)
+---
+apiVersion: gateway.k8s.aws/v1beta1
+kind: TargetGroupConfiguration
+metadata:
+  name: rascaas-default-tgc
+  namespace: rascaas
+spec:
+  defaultConfiguration:
+    targetType: ip
+  routeConfigurations:
+    - routeIdentifier:
+        kind: HTTPRoute
+        namespace: rascaas
+        name: oauth2proxy-https-redirect
+      targetGroupProps:
+        healthCheckConfig:
+          healthCheckProtocol: HTTP
+          healthCheckPath: /ping
+    - routeIdentifier:
+        kind: HTTPRoute
+        namespace: rascaas
+        name: rascaas-api-route
+      targetGroupProps:
+        healthCheckConfig:
+          healthCheckProtocol: HTTP
+          healthCheckPath: /health
+---
+apiVersion: gateway.k8s.aws/v1beta1
+kind: LoadBalancerConfiguration
+metadata:
+  name: rascaas-lbc-config
+  namespace: rascaas
+spec:
+  loadBalancerAttributes: []
+  scheme: internet-facing
+  defaultTargetGroupConfiguration:
+    name: rascaas-default-tgc
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: rascaas-gateway
+  namespace: rascaas
+  annotations:
+    gateway.k8s.aws/load-balancer-configuration: rascaas-lbc-config
+spec:
+  gatewayClassName: alb
+  listeners:
+    - name: http
+      protocol: HTTP
+      port: 80
+      allowedRoutes:
+        namespaces:
+          from: Same

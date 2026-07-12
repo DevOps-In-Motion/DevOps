@@ -1,0 +1,109 @@
+# Mirrors internal_dev_platforms/dind/containerized-deployment/testing/test_api.sh
+# Target cluster DNS: override BASE_URL if your Service name/namespace differs (e.g. Helm release).
+apiVersion: testworkflows.testkube.io/v1
+kind: TestWorkflow
+metadata:
+  name: wiki-api-connectivity
+  namespace: testkube
+  labels:
+    service: wiki-api
+    type: api-smoke
+spec:
+  container:
+    image: curlimages/curl:8.7.1
+    env:
+      - name: BASE_URL
+        value: "http://wiki-api-service.default.svc.cluster.local:8080"
+  steps:
+    - name: User and Post API (same flow as test_api.sh)
+      shell: |
+        set -eu
+        BASE_URL="${BASE_URL:-http://wiki-api-service.default.svc.cluster.local:8080}"
+
+        http_code() {
+          curl -sS --connect-timeout 30 -o /tmp/tw_body -w "%{http_code}" "$@"
+        }
+
+        expect_status() {
+          local got=$1 want=$2 msg=$3
+          if [ "$got" != "$want" ]; then
+            echo "FAIL: $msg (HTTP $got, want $want)"
+            cat /tmp/tw_body 2>/dev/null || true
+            exit 1
+          fi
+        }
+
+        echo "Using API at $BASE_URL"
+        echo "--- Test 1: POST user Alice ---"
+        c=$(http_code -X POST "$BASE_URL/users" \
+          -H "Content-Type: application/json" \
+          -d '{"name": "Alice"}')
+        expect_status "$c" 201 "create user Alice"
+
+        echo "--- Test 2: POST user Bob ---"
+        c=$(http_code -X POST "$BASE_URL/users" \
+          -H "Content-Type: application/json" \
+          -d '{"name": "Bob"}')
+        expect_status "$c" 201 "create user Bob"
+
+        echo "--- Test 3: POST user Charlie ---"
+        c=$(http_code -X POST "$BASE_URL/users" \
+          -H "Content-Type: application/json" \
+          -d '{"name": "Charlie"}')
+        expect_status "$c" 201 "create user Charlie"
+
+        echo "--- Test 4: GET user 1 ---"
+        c=$(http_code "$BASE_URL/users/1")
+        expect_status "$c" 200 "get user 1"
+
+        echo "--- Test 5: GET user 2 ---"
+        c=$(http_code "$BASE_URL/users/2")
+        expect_status "$c" 200 "get user 2"
+
+        echo "--- Test 6: GET user 999 (expect 404) ---"
+        c=$(http_code "$BASE_URL/users/999")
+        expect_status "$c" 404 "get missing user"
+
+        echo "--- Test 7: POST post user 1 ---"
+        c=$(http_code -X POST "$BASE_URL/posts" \
+          -H "Content-Type: application/json" \
+          -d '{"user_id": 1, "content": "Hello World! This is my first post."}')
+        expect_status "$c" 201 "create post 1"
+
+        echo "--- Test 8: POST post user 2 ---"
+        c=$(http_code -X POST "$BASE_URL/posts" \
+          -H "Content-Type: application/json" \
+          -d '{"user_id": 2, "content": "Bob here, sharing some thoughts!"}')
+        expect_status "$c" 201 "create post 2"
+
+        echo "--- Test 9: POST post user 1 ---"
+        c=$(http_code -X POST "$BASE_URL/posts" \
+          -H "Content-Type: application/json" \
+          -d '{"user_id": 1, "content": "Another post from Alice"}')
+        expect_status "$c" 201 "create post 3"
+
+        echo "--- Test 10: POST post user 999 (expect 404) ---"
+        c=$(http_code -X POST "$BASE_URL/posts" \
+          -H "Content-Type: application/json" \
+          -d '{"user_id": 999, "content": "This should fail"}')
+        expect_status "$c" 404 "create post for missing user"
+
+        echo "--- Test 11: GET post 1 ---"
+        c=$(http_code "$BASE_URL/posts/1")
+        expect_status "$c" 200 "get post 1"
+
+        echo "--- Test 12: GET post 2 ---"
+        c=$(http_code "$BASE_URL/posts/2")
+        expect_status "$c" 200 "get post 2"
+
+        echo "--- Test 13: GET post 999 (expect 404) ---"
+        c=$(http_code "$BASE_URL/posts/999")
+        expect_status "$c" 404 "get missing post"
+
+        echo "--- Test: Prometheus metrics ---"
+        METRICS=$(curl -sS --connect-timeout 30 "$BASE_URL/metrics")
+        echo "$METRICS" | grep -q users_created_total || { echo "FAIL: users_created_total not in /metrics"; exit 1; }
+        echo "$METRICS" | grep -q posts_created_total || { echo "FAIL: posts_created_total not in /metrics"; exit 1; }
+        echo "$METRICS" | grep -E "(users_created_total|posts_created_total)"
+
+        echo "OK: all 14 steps passed (users, posts, 404s, metrics)."

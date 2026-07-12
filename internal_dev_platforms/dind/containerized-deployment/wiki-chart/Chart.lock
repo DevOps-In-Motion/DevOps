@@ -8,5 +8,8 @@ dependencies:
 - name: openebs
   repository: https://openebs.github.io/openebs
   version: 4.5.0-develop
-digest: sha256:55ad5b8d29bbf4bf714f7b423ec49a4f5aaef738b6778e33548285d5fb0accec
-generated: "2026-02-16T19:33:54.804641-08:00"
+- name: testkube
+  repository: https://kubeshop.github.io/helm-charts
+  version: 1.10.1
+digest: sha256:401c15dda81755cbeb9616dbb45874d945c4fd9f455e1fbf0c92943a746bb6a9
+generated: "2026-04-02T11:56:56.342279-07:00"

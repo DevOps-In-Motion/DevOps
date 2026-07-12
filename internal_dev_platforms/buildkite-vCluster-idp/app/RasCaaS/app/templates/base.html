@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{% block title %}RaSCaaS — Kovr.ai{% endblock %}</title>
+  <link rel="icon" href="/static/assets/favicons/favicon.svg" type="image/svg+xml" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/css/rascaas.css" />
+  {% block head %}{% endblock %}
+</head>
+<body class="kovr-app">
+  <header class="kovr-appbar" role="banner">
+    <button type="button" class="kovr-appbar__menu" id="sidebar-toggle" aria-label="Toggle navigation">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <path d="M4 6h16M4 12h16M4 18h16"/>
+      </svg>
+    </button>
+    <a href="/" class="kovr-appbar__logo-link">
+      <img
+        class="kovr-appbar__logo kovr-appbar__logo--light"
+        src="/static/assets/images/brand/launch/kovr-full-black-text.png"
+        alt="Kovr.ai"
+        height="35"
+      />
+      <img
+        class="kovr-appbar__logo kovr-appbar__logo--dark"
+        src="/static/assets/images/brand/launch/kovr-full-white-text.png"
+        alt="Kovr.ai"
+        height="35"
+      />
+    </a>
+    <div class="kovr-appbar__spacer"></div>
+    <span class="kovr-chip">Internal Development Platform</span>
+    <span class="kovr-badge kovr-badge--muted">App {{ app_version | default("0.1.0") }}</span>
+    <span class="kovr-badge kovr-badge--primary">Helm {{ helm_chart_version | default("0.1.0") }}</span>
+    <a
+      href="/oauth2/sign_out?rd=/"
+      class="kovr-appbar__signout"
+      id="sign-out-link"
+      title="End your session and return to sign-in"
+    >
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>
+      </svg>
+      <span>Sign out</span>
+    </a>
+    <button type="button" class="kovr-appbar__theme" id="theme-toggle" aria-label="Toggle dark mode">
+      <svg class="icon-sun" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>
+      </svg>
+      <svg class="icon-moon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+      </svg>
+    </button>
+  </header>
+
+  <aside class="kovr-drawer" id="kovr-drawer" aria-label="Primary">
+    <nav class="kovr-nav">
+      <p class="kovr-nav__label">Rapid encapSulated Cluster as a Service</p>
+      <a href="/" class="kovr-nav__item is-active">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+        </svg>
+        <span>RaSCaaS</span>
+      </a>
+    </nav>
+    <div class="kovr-drawer__footer">
+      <span class="kovr-drawer__env">Environment: QA</span>
+    </div>
+  </aside>
+
+  <main class="kovr-main">
+    {% block content %}{% endblock %}
+  </main>
+
+  {% block scripts %}{% endblock %}
+  <script>
+    (function () {
+      const root = document.body;
+      const stored = localStorage.getItem("kovr-theme");
+      if (stored === "dark") root.classList.add("dark");
+      if (window.matchMedia("(max-width: 900px)").matches) {
+        root.classList.add("drawer-collapsed");
+      }
+      document.getElementById("theme-toggle")?.addEventListener("click", () => {
+        root.classList.toggle("dark");
+        localStorage.setItem("kovr-theme", root.classList.contains("dark") ? "dark" : "light");
+      });
+      document.getElementById("sidebar-toggle")?.addEventListener("click", () => {
+        root.classList.toggle("drawer-collapsed");
+      });
+    })();
+  </script>
+</body>
+</html>

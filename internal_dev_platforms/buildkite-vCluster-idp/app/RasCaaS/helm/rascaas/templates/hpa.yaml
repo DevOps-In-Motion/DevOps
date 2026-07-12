@@ -1,0 +1,29 @@
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ .Values.fastapi.name }}-hpa
+  labels:
+    app: {{ .Values.fastapi.name }}
+    chart: "{{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}"
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  scaleTargetRef:
+    kind: Deployment
+    name: {{ .Values.fastapi.name }}-deployment
+    apiVersion: apps/v1
+  minReplicas: {{ .Values.fastapi.minReplicas | default 1 }}
+  maxReplicas: {{ .Values.fastapi.maxReplicas | default 1 }}
+  metrics:
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 70
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 80

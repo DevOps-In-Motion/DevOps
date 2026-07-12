@@ -1,0 +1,25 @@
+{{- if and .Values.keycloak.enabled .Values.keycloak.exposeRoute.enabled .Values.gateway.enabled }}
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ .Release.Name }}-keycloak-route
+  namespace: {{ include "rascaas.namespace" . }}
+  labels:
+    {{- include "rascaas.labels" . | nindent 4 }}
+    app.kubernetes.io/component: keycloak
+spec:
+  parentRefs:
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: {{ include "rascaas.gateway.name" . }}
+      namespace: {{ include "rascaas.gateway.namespace" . }}
+      sectionName: https
+  hostnames:
+    - {{ .Values.keycloak.exposeRoute.hostname | quote }}
+  rules:
+    - backendRefs:
+        - group: ""
+          kind: Service
+          name: {{ include "rascaas.keycloak.serviceName" . }}
+          port: {{ .Values.keycloak.exposeRoute.servicePort | default 80 }}
+{{- end }}

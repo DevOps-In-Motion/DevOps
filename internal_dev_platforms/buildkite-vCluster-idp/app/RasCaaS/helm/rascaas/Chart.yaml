@@ -1,0 +1,11 @@
+apiVersion: v2
+name: rascaas
+description: RaSCaaS is a Rapid encapSulated Cluster as a Service for an IDP
+type: application
+version: 0.1.0
+appVersion: 0.1.0
+dependencies:
+  - name: keycloak
+    version: 25.2.0
+    repository: https://charts.bitnami.com/bitnami
+    condition: keycloak.enabled

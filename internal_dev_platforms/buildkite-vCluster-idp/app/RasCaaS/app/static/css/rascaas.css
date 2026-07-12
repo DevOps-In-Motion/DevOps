@@ -1,0 +1,808 @@
+/*
+ * RaSCaaS IDP — visual parity with frontend-app (kovr-ui)
+ * Tokens from frontend-app/src/styles/tailwind.config.js
+ */
+
+:root {
+  --kovr-primary: #9d3dff;
+  --kovr-primary-hover: #8f2af3;
+  --kovr-primary-soft: rgba(157, 61, 255, 0.1);
+  --kovr-secondary: #01bdac;
+  --kovr-info: #0f62fe;
+
+  --kovr-base: #ffffff;
+  --kovr-surface: #ffffff;
+  --kovr-surface-active: #f2f4f8;
+  --kovr-surface-highlight: #f2f4f8;
+  --kovr-text: #1f2937;
+  --kovr-text-secondary: #6b7280;
+  --kovr-divider: rgba(0, 0, 0, 0.12);
+  --kovr-border-subtle: rgba(0, 0, 0, 0.1);
+
+  --kovr-drawer-width: 240px;
+  --kovr-drawer-mini: 72px;
+  --kovr-appbar-height: 64px;
+
+  --kovr-radius: 8px;
+  --kovr-font: "Roboto", system-ui, -apple-system, sans-serif;
+  --kovr-mono: ui-monospace, "SF Mono", Menlo, monospace;
+
+  --kovr-success: #2e7d32;
+  --kovr-warning: #ed6c02;
+  --kovr-error: #d32f2f;
+}
+
+body.kovr-app.dark {
+  --kovr-base: #151521;
+  --kovr-surface: #1e1e2d;
+  --kovr-surface-active: #14121f;
+  --kovr-surface-highlight: #323248;
+  --kovr-text: #e5e7eb;
+  --kovr-text-secondary: #bbbdc1;
+  --kovr-divider: rgba(255, 255, 255, 0.12);
+  --kovr-border-subtle: rgba(255, 255, 255, 0.1);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 14px;
+}
+
+body.kovr-app {
+  margin: 0;
+  font-family: var(--kovr-font);
+  font-size: 1rem;
+  line-height: 1.5;
+  color: var(--kovr-text);
+  background: var(--kovr-base);
+}
+
+/* —— App bar (NewPanelLayout AppBar) —— */
+.kovr-appbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1200;
+  height: var(--kovr-appbar-height);
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0 1rem 0 0.75rem;
+  background: var(--kovr-surface);
+  border-bottom: 1px solid var(--kovr-border-subtle);
+  box-shadow: none;
+}
+
+.kovr-appbar__menu {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: var(--kovr-radius);
+  background: transparent;
+  color: var(--kovr-text);
+  cursor: pointer;
+}
+
+.kovr-appbar__menu:hover {
+  background: var(--kovr-primary-soft);
+}
+
+.kovr-appbar__logo-link {
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+}
+
+.kovr-appbar__logo {
+  height: 35px;
+  width: auto;
+  object-fit: contain;
+  padding: 4px;
+}
+
+.kovr-appbar__logo--dark {
+  display: none;
+}
+
+body.kovr-app.dark .kovr-appbar__logo--light {
+  display: none;
+}
+
+body.kovr-app.dark .kovr-appbar__logo--dark {
+  display: block;
+}
+
+.kovr-appbar__spacer {
+  flex: 1;
+}
+
+.kovr-appbar__signout {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  height: 40px;
+  padding: 0 0.85rem;
+  border: 1px solid var(--kovr-border-subtle);
+  border-radius: var(--kovr-radius);
+  background: transparent;
+  color: var(--kovr-text);
+  font-family: var(--kovr-font);
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.kovr-appbar__signout:hover {
+  background: var(--kovr-primary-soft);
+  color: var(--kovr-primary);
+  border-color: rgba(157, 61, 255, 0.35);
+}
+
+.kovr-appbar__signout:focus-visible {
+  outline: 2px solid var(--kovr-primary);
+  outline-offset: 2px;
+}
+
+.kovr-appbar__theme {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--kovr-border-subtle);
+  border-radius: var(--kovr-radius);
+  background: transparent;
+  color: var(--kovr-text);
+  cursor: pointer;
+}
+
+.kovr-appbar__theme:hover {
+  background: var(--kovr-primary-soft);
+}
+
+body.kovr-app .icon-moon {
+  display: none;
+}
+
+body.kovr-app.dark .icon-sun {
+  display: none;
+}
+
+body.kovr-app.dark .icon-moon {
+  display: block;
+}
+
+/* —— Sidebar drawer —— */
+.kovr-drawer {
+  position: fixed;
+  top: var(--kovr-appbar-height);
+  left: 0;
+  bottom: 0;
+  width: var(--kovr-drawer-width);
+  z-index: 1100;
+  display: flex;
+  flex-direction: column;
+  background: var(--kovr-surface);
+  border-right: 1px solid var(--kovr-border-subtle);
+  transition: width 0.2s ease;
+  overflow: hidden;
+}
+
+body.kovr-app.drawer-collapsed .kovr-drawer {
+  width: var(--kovr-drawer-mini);
+}
+
+body.kovr-app.drawer-collapsed .kovr-nav__item span,
+body.kovr-app.drawer-collapsed .kovr-nav__label,
+body.kovr-app.drawer-collapsed .kovr-nav__hint,
+body.kovr-app.drawer-collapsed .kovr-drawer__footer {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.kovr-nav {
+  flex: 1;
+  padding: 1rem 0.5rem;
+  overflow-y: auto;
+}
+
+.kovr-nav__label {
+  margin: 1rem 0.75rem 0.35rem;
+  font-size: 0.7rem;
+  font-weight: 500;
+  line-height: 1.35;
+  letter-spacing: 0.04em;
+  text-transform: none;
+  color: var(--kovr-text-secondary);
+}
+
+.kovr-nav__hint {
+  display: block;
+  margin: 0 0.75rem 0.5rem;
+  font-size: 0.72rem;
+  line-height: 1.35;
+  color: var(--kovr-text-secondary);
+}
+
+.kovr-nav__item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0.15rem 0.35rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: var(--kovr-radius);
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--kovr-text);
+  text-decoration: none;
+  transition: background 0.15s;
+}
+
+.kovr-nav__item:hover {
+  background: var(--kovr-surface-highlight);
+}
+
+.kovr-nav__item.is-active {
+  background: var(--kovr-primary-soft);
+  color: var(--kovr-primary);
+}
+
+.kovr-nav__item svg {
+  flex-shrink: 0;
+}
+
+.kovr-drawer__footer {
+  padding: 0.75rem 1rem;
+  border-top: 1px solid var(--kovr-divider);
+  font-size: 0.75rem;
+  color: var(--kovr-text-secondary);
+}
+
+/* —— Main content —— */
+.kovr-main {
+  margin-top: var(--kovr-appbar-height);
+  margin-left: var(--kovr-drawer-width);
+  min-height: calc(100vh - var(--kovr-appbar-height));
+  padding: 1.5rem 1.75rem 2.5rem;
+  background: var(--kovr-base);
+  transition: margin-left 0.2s ease;
+  max-width: calc(100vw - var(--kovr-drawer-width));
+}
+
+body.kovr-app.drawer-collapsed .kovr-main {
+  margin-left: var(--kovr-drawer-mini);
+  max-width: calc(100vw - var(--kovr-drawer-mini));
+}
+
+.kovr-page {
+  max-width: 1200px;
+}
+
+/* —— Page header —— */
+.kovr-page__header {
+  display: grid;
+  gap: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+@media (min-width: 768px) {
+  .kovr-page__header {
+    grid-template-columns: 1fr auto;
+    align-items: start;
+  }
+}
+
+.kovr-page__title {
+  margin: 0 0 0.5rem;
+  font-size: 1.5rem;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  color: var(--kovr-text);
+}
+
+.kovr-page__subtitle {
+  margin: 0;
+  max-width: 42rem;
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: var(--kovr-text-secondary);
+}
+
+.kovr-page__stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
+.kovr-stat {
+  min-width: 6.5rem;
+  padding: 0.65rem 0.85rem;
+  border: 1px solid var(--kovr-divider);
+  border-radius: var(--kovr-radius);
+  background: var(--kovr-surface);
+}
+
+.kovr-stat__label {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--kovr-text-secondary);
+}
+
+.kovr-stat__value {
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
+/* —— Badges & chips —— */
+.kovr-chip {
+  display: none;
+  padding: 0.35rem 0.65rem;
+  border-radius: var(--kovr-radius);
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--kovr-text-secondary);
+  border: 1px solid var(--kovr-border-subtle);
+}
+
+@media (min-width: 900px) {
+  .kovr-chip {
+    display: inline-flex;
+  }
+}
+
+.kovr-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 500;
+  border: 1px solid var(--kovr-divider);
+  background: var(--kovr-surface);
+  color: var(--kovr-text-secondary);
+}
+
+.kovr-badge--primary {
+  border-color: rgba(157, 61, 255, 0.35);
+  background: var(--kovr-primary-soft);
+  color: var(--kovr-primary);
+}
+
+.kovr-badge--muted {
+  color: var(--kovr-text-secondary);
+}
+
+/* —— Stepper —— */
+.kovr-stepper {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: 0 0 1.25rem;
+  padding: 0;
+  list-style: none;
+}
+
+.kovr-stepper__item {
+  flex: 1;
+  min-width: 5.5rem;
+  padding: 0.45rem 0.65rem;
+  text-align: center;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--kovr-text-secondary);
+  border-radius: var(--kovr-radius);
+  border: 1px solid transparent;
+}
+
+.kovr-stepper__item.is-active {
+  color: var(--kovr-primary);
+  background: var(--kovr-primary-soft);
+  border-color: rgba(157, 61, 255, 0.25);
+}
+
+.kovr-stepper__item.is-done {
+  color: var(--kovr-secondary);
+}
+
+/* —— Cards (MUI outlined) —— */
+.kovr-card-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+.kovr-card {
+  padding: 1.5rem;
+  background: var(--kovr-surface);
+  border: 1px solid var(--kovr-divider);
+  border-radius: var(--kovr-radius);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.kovr-card:not(.kovr-card--locked):hover,
+.kovr-card.kovr-card--unlocked {
+  border-color: rgba(157, 61, 255, 0.35);
+}
+
+.kovr-card--locked {
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.kovr-card.kovr-card--unlocked {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.kovr-card__head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.kovr-card__step {
+  font-family: var(--kovr-mono);
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: var(--kovr-primary);
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  background: var(--kovr-primary-soft);
+}
+
+.kovr-card__title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.kovr-field-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.kovr-field__label {
+  display: block;
+  margin-bottom: 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--kovr-text-secondary);
+}
+
+.kovr-field {
+  width: 100%;
+  padding: 0.6rem 0.75rem;
+  font-family: var(--kovr-font);
+  font-size: 0.875rem;
+  color: var(--kovr-text);
+  background: var(--kovr-base);
+  border: 1px solid var(--kovr-divider);
+  border-radius: var(--kovr-radius);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.kovr-field--select {
+  appearance: none;
+  padding-right: 2rem;
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%236b7280'%3E%3Cpath d='M4 6l4 4 4-4'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+}
+
+.kovr-field:focus {
+  outline: none;
+  border-color: var(--kovr-primary);
+  box-shadow: 0 0 0 2px var(--kovr-primary-soft);
+}
+
+.kovr-field:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  background: var(--kovr-surface-active);
+}
+
+.is-loading .kovr-field {
+  color: var(--kovr-text-secondary);
+}
+
+/* —— Buttons —— */
+.kovr-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.55rem 1.25rem;
+  font-family: var(--kovr-font);
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-transform: none;
+  border: none;
+  border-radius: var(--kovr-radius);
+  cursor: pointer;
+  transition: background 0.15s, box-shadow 0.15s;
+}
+
+.kovr-btn--primary {
+  color: #fff;
+  background: var(--kovr-primary);
+  box-shadow: none;
+}
+
+.kovr-btn--primary:hover:not(:disabled) {
+  background: var(--kovr-primary-hover);
+}
+
+.kovr-btn--primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* —— Panels —— */
+.kovr-panel {
+  margin-top: 1.25rem;
+  padding: 1.25rem 1.5rem;
+  background: var(--kovr-surface);
+  border: 1px solid var(--kovr-divider);
+  border-radius: var(--kovr-radius);
+}
+
+.kovr-panel--accent {
+  border-color: rgba(157, 61, 255, 0.35);
+  background: var(--kovr-surface);
+}
+
+.kovr-panel__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.kovr-panel__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.85rem;
+}
+
+.kovr-panel__title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.kovr-panel__sub {
+  margin: 0.2rem 0 0;
+  font-size: 0.78rem;
+  color: var(--kovr-text-secondary);
+}
+
+.kovr-link {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--kovr-primary);
+  text-decoration: none;
+}
+
+.kovr-link:hover {
+  text-decoration: underline;
+}
+
+/* —— Summary —— */
+.kovr-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.85rem;
+  color: var(--kovr-text-secondary);
+}
+
+.kovr-summary__primary {
+  font-family: var(--kovr-mono);
+  font-size: 0.88rem;
+  color: var(--kovr-text);
+}
+
+.kovr-summary__dim {
+  font-size: 0.8rem;
+  color: var(--kovr-text-secondary);
+}
+
+.kovr-summary__dim em {
+  font-style: normal;
+  color: var(--kovr-text-secondary);
+  opacity: 0.85;
+}
+
+.kovr-summary strong {
+  font-weight: 500;
+  color: var(--kovr-text);
+}
+
+/* —— Live log —— */
+.kovr-log {
+  margin: 0;
+  max-height: 16rem;
+  overflow: auto;
+  padding: 1rem;
+  border-radius: var(--kovr-radius);
+  background: var(--kovr-surface-active);
+  border: 1px solid var(--kovr-divider);
+  font-family: var(--kovr-mono);
+  font-size: 0.75rem;
+  line-height: 1.55;
+  color: var(--kovr-text);
+}
+
+.kovr-log__line--error {
+  color: var(--kovr-error);
+}
+
+/* —— History list —— */
+.kovr-history {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.kovr-history__empty {
+  margin: 0;
+  padding: 0.5rem 0;
+  font-size: 0.875rem;
+  color: var(--kovr-text-secondary);
+}
+
+.kovr-history__item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem 0.85rem;
+  background: var(--kovr-base);
+  border: 1px solid var(--kovr-divider);
+  border-radius: var(--kovr-radius);
+}
+
+.kovr-history__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.kovr-history__title {
+  font-family: var(--kovr-mono);
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.kovr-history__meta {
+  font-size: 0.78rem;
+  color: var(--kovr-text-secondary);
+}
+
+.kovr-history__link {
+  margin-left: 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--kovr-primary);
+  text-decoration: none;
+}
+
+.kovr-history__link:hover {
+  text-decoration: underline;
+}
+
+.kovr-history__status {
+  flex-shrink: 0;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 500;
+  border: 1px solid var(--kovr-divider);
+}
+
+.kovr-history__status--provisioning {
+  color: var(--kovr-warning);
+  background: rgba(237, 108, 2, 0.08);
+}
+
+.kovr-history__status--syncing {
+  color: var(--kovr-info);
+  background: rgba(15, 98, 254, 0.08);
+}
+
+.kovr-history__status--ready {
+  color: var(--kovr-success);
+  background: rgba(46, 125, 50, 0.08);
+}
+
+.kovr-history__status--failed {
+  color: var(--kovr-error);
+  background: rgba(211, 47, 47, 0.08);
+}
+
+/* —— Toast —— */
+.kovr-toast {
+  position: fixed;
+  bottom: 1.25rem;
+  right: 1.25rem;
+  z-index: 2000;
+  max-width: 20rem;
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  border-radius: var(--kovr-radius);
+  border: 1px solid var(--kovr-divider);
+  background: var(--kovr-surface);
+  color: var(--kovr-text);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+.kovr-toast--error {
+  border-color: rgba(211, 47, 47, 0.4);
+  color: var(--kovr-error);
+}
+
+@media (min-width: 901px) {
+  .kovr-drawer {
+    transform: none;
+  }
+}
+
+/* —— Responsive (matches NewPanelLayout md breakpoint) —— */
+@media (max-width: 900px) {
+  .kovr-appbar__signout span {
+    display: none;
+  }
+
+  .kovr-appbar__signout {
+    width: 40px;
+    padding: 0;
+    justify-content: center;
+  }
+
+  .kovr-drawer {
+    transform: translateX(-100%);
+  }
+
+  body.kovr-app:not(.drawer-collapsed) .kovr-drawer {
+    transform: translateX(0);
+    box-shadow: 8px 0 24px rgba(0, 0, 0, 0.15);
+  }
+
+  .kovr-main {
+    margin-left: 0;
+    max-width: 100vw;
+    padding: 1rem 1rem 2rem;
+  }
+
+  body.kovr-app.drawer-collapsed .kovr-main {
+    margin-left: 0;
+    max-width: 100vw;
+  }
+}

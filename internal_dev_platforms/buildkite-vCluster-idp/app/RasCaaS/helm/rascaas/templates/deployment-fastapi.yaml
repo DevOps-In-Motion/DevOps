@@ -1,0 +1,81 @@
+{{- include "rascaas.secrets.validate" . }}
+{{- $api := .Values.fastapi | default dict }}
+{{- if $api.port }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $api.name }}-deployment
+  labels:
+    {{- include "rascaas.fastapi.labels" . | nindent 4 }}
+spec:
+  replicas: {{ $api.replicas | default 1 }}
+  selector:
+    matchLabels:
+      {{- include "rascaas.fastapi.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "rascaas.fastapi.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- include "rascaas.imagePullSecrets" . | nindent 6 }}
+      serviceAccountName: {{ include "rascaas.fastapi.serviceAccountName" . }}
+      enableServiceLinks: false
+{{- if $api.tolerations }}
+      tolerations:
+{{ toYaml $api.tolerations | indent 8 }}
+{{- end }}
+{{- if $api.affinity }}
+      affinity:
+{{ toYaml $api.affinity | indent 8 }}
+{{- end }}
+{{- include "rascaas.pod.csiVolumes" . }}
+      containers:
+        - name: {{ $api.name }}
+          image: {{ $api.image }}
+          imagePullPolicy: {{ $api.imagePullPolicy | default "IfNotPresent" }}
+          ports:
+            - name: http
+              containerPort: {{ $api.port }}
+{{- include "rascaas.container.csiVolumeMounts" . }}
+          env:
+{{- range $k, $v := $api.env }}
+{{- if and $.Values.keycloak.enabled (has $k (list "OIDC_ISSUER_URL" "OIDC_CLIENT_ID" "OIDC_JWKS_URL" "TRUST_OAUTH2_PROXY_IDENTITY")) }}
+{{- else }}
+            - name: {{ $k }}
+              value: {{ $v | quote }}
+{{- end }}
+{{- end }}
+{{- if .Values.keycloak.enabled }}
+            - name: OIDC_ISSUER_URL
+              value: {{ include "rascaas.oidc.issuerUrl" . | quote }}
+            - name: OIDC_CLIENT_ID
+              value: {{ .Values.keycloak.clientId | quote }}
+            - name: OIDC_JWKS_URL
+              value: {{ include "rascaas.keycloak.internalOidcJwksUrl" . | quote }}
+            - name: TRUST_OAUTH2_PROXY_IDENTITY
+              value: "true"
+{{- end }}
+{{- range $envName, $secretKey := $api.secretEnv }}
+            - name: {{ $envName }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $api.secretName }}
+                  key: {{ $secretKey }}
+{{- end }}
+          {{- with $api.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          livenessProbe:
+            httpGet:
+              path: {{ $api.livenessProbe.path | default "/health" }}
+              port: http
+            initialDelaySeconds: {{ $api.livenessProbe.initialDelaySeconds | default 10 }}
+            periodSeconds: {{ $api.livenessProbe.periodSeconds | default 10 }}
+          readinessProbe:
+            httpGet:
+              path: {{ $api.readinessProbe.path | default "/ready" }}
+              port: http
+            initialDelaySeconds: {{ $api.readinessProbe.initialDelaySeconds | default 5 }}
+            periodSeconds: {{ $api.readinessProbe.periodSeconds | default 10 }}
+{{- end }}

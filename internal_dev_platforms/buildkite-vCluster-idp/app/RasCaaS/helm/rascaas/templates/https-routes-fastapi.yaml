@@ -1,0 +1,41 @@
+{{- if .Values.gateway.enabled }}
+# API and probe paths — routed directly to FastAPI (bypass oauth2-proxy).
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ .Values.fastapi.name }}-api-route
+  namespace: {{ include "rascaas.namespace" . }}
+spec:
+  parentRefs:
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: {{ include "rascaas.gateway.name" . }}
+      namespace: {{ include "rascaas.gateway.namespace" . }}
+      sectionName: https
+{{- if .Values.gateway.hostname }}
+  hostnames:
+    - {{ .Values.gateway.hostname | quote }}
+{{- end }}
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /api/trigger
+        - path:
+            type: PathPrefix
+            value: /api/repos
+        - path:
+            type: PathPrefix
+            value: /api/branches
+        - path:
+            type: PathPrefix
+            value: /health
+        - path:
+            type: PathPrefix
+            value: /ready
+      backendRefs:
+        - group: ""
+          kind: Service
+          name: {{ .Values.fastapi.name }}
+          port: {{ .Values.fastapi.port }}
+{{- end }}

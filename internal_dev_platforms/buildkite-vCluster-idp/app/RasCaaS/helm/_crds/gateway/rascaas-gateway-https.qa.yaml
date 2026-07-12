@@ -1,0 +1,52 @@
+# QA — HTTPS listener for rascaas-gateway (rascaas.qa.kovr.ai)
+# Account 650251729525, us-west-2.
+#
+# Prerequisite: kubectl apply -f rascaas-gateway-base.yaml
+#
+# 1. Set IAM cert ARN (must cover rascaas.qa.kovr.ai):
+#    aws iam list-server-certificates --profile qa-kovr
+#    # or upload ACM cert: aws iam upload-server-certificate ...
+#
+# 2. Replace REPLACE_WITH_IAM_SERVER_CERT_ARN below, then:
+#    kubectl apply -f helm/_crds/gateway/rascaas-gateway-https.qa.yaml
+#
+# 3. DNS: rascaas.qa.kovr.ai → ALB hostname from:
+#    kubectl get gateway rascaas-gateway -n rascaas -o jsonpath='{.status.addresses[0].value}'
+---
+apiVersion: gateway.k8s.aws/v1beta1
+kind: LoadBalancerConfiguration
+metadata:
+  name: rascaas-lbc-config
+  namespace: rascaas
+spec:
+  loadBalancerAttributes: []
+  scheme: internet-facing
+  defaultTargetGroupConfiguration:
+    name: rascaas-default-tgc
+  listenerConfigurations:
+    - protocolPort: HTTPS:443
+      defaultCertificate: REPLACE_WITH_IAM_SERVER_CERT_ARN
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: rascaas-gateway
+  namespace: rascaas
+  annotations:
+    gateway.k8s.aws/load-balancer-configuration: rascaas-lbc-config
+spec:
+  gatewayClassName: alb
+  listeners:
+    - name: http
+      protocol: HTTP
+      port: 80
+      allowedRoutes:
+        namespaces:
+          from: Same
+    - name: https
+      hostname: rascaas.qa.kovr.ai
+      protocol: HTTPS
+      port: 443
+      allowedRoutes:
+        namespaces:
+          from: Same

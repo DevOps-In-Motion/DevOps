@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% block title %}RaSCaaS — Kovr.ai{% endblock %}
+
+{% block content %}
+<div class="kovr-page">
+  <header class="kovr-page__header">
+    <div>
+      <h1 class="kovr-page__title">RaSCaaS</h1>
+      <p class="kovr-page__subtitle">
+        Provision an on-demand Kovr.ai stack by choosing the repository and branch you need to test.
+        We currently support only one variance repository at a time.
+        GitHub Actions and Helm deploy the platform stack autonomously—no workflow selection required.
+      </p>
+    </div>
+    <div class="kovr-page__stats">
+      <div class="kovr-stat">
+        <span class="kovr-stat__label">Environment</span>
+        <span class="kovr-stat__value">QA</span>
+      </div>
+      <div class="kovr-stat">
+        <span class="kovr-stat__label">Helm chart</span>
+        <span class="kovr-stat__value" id="stat-helm-version">{{ helm_chart_version | default("0.1.0") }}</span>
+      </div>
+    </div>
+  </header>
+
+  <ol class="kovr-stepper" aria-label="Deployment steps">
+    <li class="kovr-stepper__item is-active" data-step="1"><span>Repository</span></li>
+    <li class="kovr-stepper__item" data-step="2"><span>Branch</span></li>
+    <li class="kovr-stepper__item" data-step="3"><span>Details</span></li>
+  </ol>
+
+  <div class="kovr-card-grid">
+    <article class="kovr-card" id="card-repo">
+      <div class="kovr-card__head">
+        <span class="kovr-card__step">01</span>
+        <h2 class="kovr-card__title">Repository</h2>
+      </div>
+      <label class="kovr-field__label" for="repo-select">GitHub repository</label>
+      <select id="repo-select" class="kovr-field kovr-field--select" disabled>
+        <option value="">Loading repositories…</option>
+      </select>
+    </article>
+
+    <article class="kovr-card kovr-card--locked" id="card-branch">
+      <div class="kovr-card__head">
+        <span class="kovr-card__step">02</span>
+        <h2 class="kovr-card__title">Branch</h2>
+      </div>
+      <label class="kovr-field__label" for="branch-select">Target branch</label>
+      <select id="branch-select" class="kovr-field kovr-field--select" disabled>
+        <option value="">Select a repository first</option>
+      </select>
+    </article>
+
+    <article class="kovr-card kovr-card--locked" id="card-context">
+      <div class="kovr-card__head">
+        <span class="kovr-card__step">03</span>
+        <h2 class="kovr-card__title">Request details</h2>
+      </div>
+      <div class="kovr-field-stack">
+        <div class="kovr-field-group">
+          <label class="kovr-field__label" for="ttl-input">Time to live (TTL)</label>
+          <input id="ttl-input" class="kovr-field" type="text" placeholder="e.g., 72h" disabled />
+        </div>
+        <div class="kovr-field-group">
+          <label class="kovr-field__label" for="reason-input">Reason for testing</label>
+          <input id="reason-input" class="kovr-field" type="text" placeholder="Brief justification for this deployment" disabled />
+        </div>
+        <div class="kovr-field-group">
+          <label class="kovr-field__label" for="ticket-input">Linear ticket URL</label>
+          <input
+            id="ticket-input"
+            class="kovr-field"
+            type="url"
+            placeholder="https://linear.app/&lt;path-to-ticket&gt;/"
+            disabled
+          />
+        </div>
+      </div>
+    </article>
+  </div>
+
+  <section class="kovr-panel kovr-panel--accent" id="trigger-panel" hidden>
+    <div class="kovr-panel__row">
+      <div class="kovr-summary" id="trigger-summary" aria-live="polite"></div>
+      <button type="button" class="kovr-btn kovr-btn--primary" id="trigger-btn">
+        RaSCaaS
+      </button>
+    </div>
+  </section>
+
+  <section class="kovr-panel" id="live-panel" hidden>
+    <div class="kovr-panel__head">
+      <div>
+        <h2 class="kovr-panel__title">Deployment log</h2>
+        <p class="kovr-panel__sub" id="live-panel-status">Streaming live updates…</p>
+      </div>
+      <a class="kovr-link" id="live-run-link" href="#" target="_blank" rel="noopener noreferrer" hidden>
+        View run on GitHub
+      </a>
+    </div>
+    <pre class="kovr-log" id="live-log" aria-live="polite"></pre>
+  </section>
+
+  <section class="kovr-panel">
+    <div class="kovr-panel__head">
+      <h2 class="kovr-panel__title">Recent deployments</h2>
+      <span class="kovr-badge kovr-badge--muted" id="history-count">0 this session</span>
+    </div>
+    <ul id="history-list" class="kovr-history">
+      <li class="kovr-history__empty">No deployments yet this session.</li>
+    </ul>
+  </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/dispatch.js" defer></script>
+{% endblock %}

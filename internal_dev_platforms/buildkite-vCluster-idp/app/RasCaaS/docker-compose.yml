@@ -1,0 +1,98 @@
+# RaSCaaS local stack: Keycloak (OIDC) + oauth2-proxy + FastAPI
+#
+# Usage:
+#   cp .env.example .env
+#   docker compose up --build
+#
+# Open the app (authenticated):  http://localhost:4180
+# Keycloak admin console:          http://localhost:8080  (admin / admin)
+# Test user:                       dev / dev
+#
+# FastAPI listens on 8000 (published for health/debug only). For the UI and /api/*,
+# use oauth2-proxy on :4180 — otherwise ENVIRONMENT=production returns 401 on /api/repos.
+
+services:
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0.7
+    command: start-dev --import-realm
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      KC_HTTP_ENABLED: "true"
+      KC_HOSTNAME: localhost
+      KC_HOSTNAME_PORT: 8080
+      KC_HOSTNAME_STRICT: "false"
+      KC_HEALTH_ENABLED: "true"
+    volumes:
+      - ./docker/keycloak/realm-rascaas.json:/opt/keycloak/data/import/realm-rascaas.json:ro
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/9000; echo -e 'GET /health/ready HTTP/1.1\\r\\nhost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3; timeout 2 cat <&3 | grep -q '200'"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 90s
+
+  rascaas:
+    build: .
+    # Not published on the host — use oauth2-proxy :4180 so API requests carry proxy auth headers.
+    expose:
+      - "8000"
+    env_file:
+      - .env
+    environment:
+      ENVIRONMENT: ${ENVIRONMENT:-production}
+      OIDC_ISSUER_URL: ${OIDC_ISSUER_URL:-http://localhost:8080/realms/rascaas}
+      OIDC_DISCOVERY_URL: ${OIDC_DISCOVERY_URL:-http://keycloak:8080/realms/rascaas}
+      OIDC_JWKS_URL: ${OIDC_JWKS_URL:-http://keycloak:8080/realms/rascaas/protocol/openid-connect/certs}
+      OIDC_CLIENT_ID: ${OIDC_CLIENT_ID:-platform-ui}
+      TRUST_OAUTH2_PROXY_IDENTITY: "true"
+      APP_BASE_URL: ${APP_BASE_URL:-http://localhost:4180}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      keycloak:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "/usr/bin/python3", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=2)"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  oauth2-proxy:
+    image: quay.io/oauth2-proxy/oauth2-proxy:v7.7.1
+    restart: unless-stopped
+    ports:
+      - "4180:4180"
+    environment:
+      OAUTH2_PROXY_PROVIDER: oidc
+      OAUTH2_PROXY_CLIENT_ID: ${OIDC_CLIENT_ID:-platform-ui}
+      OAUTH2_PROXY_CLIENT_SECRET: ${OAUTH2_PROXY_CLIENT_SECRET:-rascaas-local-client-secret}
+      # Issuer in tokens uses localhost (KC_HOSTNAME); redeem/JWKS use service name on the Docker network.
+      OAUTH2_PROXY_OIDC_ISSUER_URL: ${OIDC_ISSUER_URL:-http://localhost:8080/realms/rascaas}
+      OAUTH2_PROXY_INSECURE_OIDC_SKIP_ISSUER_VERIFICATION: "true"
+      OAUTH2_PROXY_SKIP_OIDC_DISCOVERY: "true"
+      OAUTH2_PROXY_LOGIN_URL: http://localhost:8080/realms/rascaas/protocol/openid-connect/auth
+      OAUTH2_PROXY_REDEEM_URL: http://keycloak:8080/realms/rascaas/protocol/openid-connect/token
+      OAUTH2_PROXY_OIDC_JWKS_URL: http://keycloak:8080/realms/rascaas/protocol/openid-connect/certs
+      OAUTH2_PROXY_REDIRECT_URL: ${OAUTH2_PROXY_REDIRECT_URL:-http://localhost:4180/oauth2/callback}
+      OAUTH2_PROXY_UPSTREAMS: http://rascaas:8000/
+      OAUTH2_PROXY_HTTP_ADDRESS: 0.0.0.0:4180
+      OAUTH2_PROXY_EMAIL_DOMAINS: "*"
+      OAUTH2_PROXY_COOKIE_SECRET: ${OAUTH2_PROXY_COOKIE_SECRET:?Set OAUTH2_PROXY_COOKIE_SECRET in .env (see .env.example)}
+      OAUTH2_PROXY_COOKIE_SECURE: "false"
+      OAUTH2_PROXY_PASS_ACCESS_TOKEN: "true"
+      OAUTH2_PROXY_PASS_USER_HEADERS: "true"
+      OAUTH2_PROXY_SET_XAUTHREQUEST: "true"
+      OAUTH2_PROXY_SKIP_PROVIDER_BUTTON: "true"
+      OAUTH2_PROXY_SKIP_AUTH_REGEX: ^/(health|ready)(/|$)
+      OAUTH2_PROXY_REVERSE_PROXY: "false"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      keycloak:
+        condition: service_healthy
+      rascaas:
+        condition: service_healthy

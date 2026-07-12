@@ -1,0 +1,101 @@
+{{- include "rascaas.secrets.validate" . }}
+{{- $oauth := .Values.oauth2proxy | default dict }}
+{{- if $oauth.port }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $oauth.name }}-deployment
+  labels:
+    {{- include "rascaas.oauth2proxy.labels" . | nindent 4 }}
+spec:
+  replicas: {{ $oauth.replicas | default 1 }}
+  selector:
+    matchLabels:
+      {{- include "rascaas.oauth2proxy.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "rascaas.oauth2proxy.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- include "rascaas.imagePullSecrets" . | nindent 6 }}
+      serviceAccountName: {{ include "rascaas.oauth2proxy.serviceAccountName" . }}
+      enableServiceLinks: false
+{{- if $oauth.tolerations }}
+      tolerations:
+{{ toYaml $oauth.tolerations | indent 8 }}
+{{- end }}
+{{- if $oauth.affinity }}
+      affinity:
+{{ toYaml $oauth.affinity | indent 8 }}
+{{- end }}
+{{- include "rascaas.pod.csiVolumes" . }}
+      containers:
+        - name: oauth2-proxy
+          image: {{ $oauth.image }}
+          imagePullPolicy: {{ $oauth.imagePullPolicy | default "IfNotPresent" }}
+          ports:
+            - name: http
+              containerPort: {{ $oauth.port }}
+{{- include "rascaas.container.csiVolumeMounts" . }}
+          env:
+            - name: OAUTH2_PROXY_PROVIDER
+              value: oidc
+            - name: OAUTH2_PROXY_CLIENT_ID
+              value: {{ if .Values.keycloak.enabled }}{{ .Values.keycloak.clientId | quote }}{{ else }}{{ $oauth.clientId | quote }}{{ end }}
+            - name: OAUTH2_PROXY_OIDC_ISSUER_URL
+              value: {{ include "rascaas.oidc.issuerUrl" . | quote }}
+{{- if .Values.keycloak.enabled }}
+            - name: OAUTH2_PROXY_REDEEM_URL
+              value: {{ include "rascaas.keycloak.internalOidcTokenUrl" . | quote }}
+            - name: OAUTH2_PROXY_OIDC_JWKS_URL
+              value: {{ include "rascaas.keycloak.internalOidcJwksUrl" . | quote }}
+            - name: OAUTH2_PROXY_INSECURE_OIDC_SKIP_ISSUER_VERIFICATION
+              value: "true"
+{{- end }}
+            - name: OAUTH2_PROXY_REDIRECT_URL
+              value: {{ $oauth.redirectUrl | quote }}
+            - name: OAUTH2_PROXY_UPSTREAMS
+              value: {{ include "rascaas.oauth2proxy.upstream" . | quote }}
+            - name: OAUTH2_PROXY_HTTP_ADDRESS
+              value: {{ printf "0.0.0.0:%v" $oauth.port | quote }}
+            - name: OAUTH2_PROXY_EMAIL_DOMAINS
+              value: {{ $oauth.emailDomains | default "*" | quote }}
+            - name: OAUTH2_PROXY_PASS_ACCESS_TOKEN
+              value: {{ $oauth.passAccessToken | default true | quote }}
+            - name: OAUTH2_PROXY_SET_XAUTHREQUEST
+              value: {{ $oauth.setXAuthRequest | default true | quote }}
+            - name: OAUTH2_PROXY_COOKIE_SECURE
+              value: {{ $oauth.cookieSecure | default false | quote }}
+            - name: OAUTH2_PROXY_SKIP_PROVIDER_BUTTON
+              value: {{ $oauth.skipProviderButton | default true | quote }}
+            - name: OAUTH2_PROXY_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $oauth.secretName }}
+                  key: {{ $oauth.clientSecretKey | default "client-secret" }}
+            - name: OAUTH2_PROXY_COOKIE_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $oauth.secretName }}
+                  key: {{ $oauth.cookieSecretKey | default "cookie-secret" }}
+{{- range $k, $v := $oauth.extraEnv }}
+            - name: {{ $k }}
+              value: {{ $v | quote }}
+{{- end }}
+          {{- with $oauth.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          livenessProbe:
+            httpGet:
+              path: /ping
+              port: http
+            initialDelaySeconds: {{ $oauth.livenessProbe.initialDelaySeconds | default 0 }}
+            periodSeconds: {{ $oauth.livenessProbe.periodSeconds | default 10 }}
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: http
+            initialDelaySeconds: {{ $oauth.readinessProbe.initialDelaySeconds | default 0 }}
+            periodSeconds: {{ $oauth.readinessProbe.periodSeconds | default 10 }}
+{{- end }}

@@ -1,0 +1,16 @@
+{{- if .Values.oauth2proxy.port }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.oauth2proxy.name }}
+  labels:
+    {{- include "rascaas.oauth2proxy.labels" . | nindent 4 }}
+spec:
+  selector:
+    {{- include "rascaas.oauth2proxy.selectorLabels" . | nindent 4 }}
+  ports:
+    - name: {{ .Values.oauth2proxy.name }}-port
+      protocol: TCP
+      port: 80
+      targetPort: {{ .Values.oauth2proxy.port }}
+{{- end }}

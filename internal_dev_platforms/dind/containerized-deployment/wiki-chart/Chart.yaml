@@ -41,3 +41,7 @@ dependencies:
     version: "4.5.0-develop"
     repository: https://openebs.github.io/openebs
     condition: openebs.enabled
+  - name: testkube
+    version: "1.10.1"
+    repository: https://kubeshop.github.io/helm-charts
+    condition: testkube.enabled

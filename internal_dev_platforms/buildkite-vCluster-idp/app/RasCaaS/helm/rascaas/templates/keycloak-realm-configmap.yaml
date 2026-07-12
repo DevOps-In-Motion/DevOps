@@ -1,0 +1,86 @@
+{{- if .Values.keycloak.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "rascaas.keycloak.realmConfigMapName" . }}
+  namespace: {{ include "rascaas.namespace" . }}
+  labels:
+    {{- include "rascaas.labels" . | nindent 4 }}
+    app.kubernetes.io/component: keycloak
+data:
+  rascaas-realm.json: |
+    {
+      "realm": {{ .Values.keycloak.realm | quote }},
+      "enabled": true,
+      "registrationAllowed": false,
+      "loginWithEmailAllowed": true,
+      "duplicateEmailsAllowed": false,
+      "resetPasswordAllowed": false,
+      "roles": {
+        "realm": [
+          { "name": "admins", "description": "RaSCaaS operators" }
+        ]
+      },
+      "groups": [
+        {
+          "name": "admins",
+          "realmRoles": ["admins"]
+        }
+      ],
+      "users": [
+        {
+          "username": "dev",
+          "enabled": true,
+          "emailVerified": true,
+          "firstName": "Dev",
+          "lastName": "Operator",
+          "email": "dev@kovr.ai",
+          "credentials": [
+            {
+              "type": "password",
+              "value": "dev",
+              "temporary": false
+            }
+          ],
+          "groups": ["admins"],
+          "realmRoles": ["admins"]
+        }
+      ],
+      "clients": [
+        {
+          "clientId": {{ .Values.keycloak.clientId | quote }},
+          "name": "RaSCaaS UI",
+          "enabled": true,
+          "clientAuthenticatorType": "client-secret",
+          "secret": {{ .Values.keycloak.clientSecret | quote }},
+          "redirectUris": [
+            {{ .Values.oauth2proxy.redirectUrl | quote }}
+          ],
+          "webOrigins": [
+            {{ include "rascaas.appBaseUrl" . | quote }}
+          ],
+          "publicClient": false,
+          "protocol": "openid-connect",
+          "standardFlowEnabled": true,
+          "directAccessGrantsEnabled": true,
+          "serviceAccountsEnabled": false,
+          "fullScopeAllowed": true,
+          "protocolMappers": [
+            {
+              "name": "groups",
+              "protocol": "openid-connect",
+              "protocolMapper": "oidc-group-membership-mapper",
+              "consentRequired": false,
+              "config": {
+                "full.path": "false",
+                "id.token.claim": "true",
+                "access.token.claim": "true",
+                "claim.name": "groups",
+                "userinfo.token.claim": "true"
+              }
+            }
+          ]
+        }
+      ]
+    }
+{{- end }}

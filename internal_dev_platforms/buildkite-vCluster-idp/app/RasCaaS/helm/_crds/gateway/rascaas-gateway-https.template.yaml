@@ -1,0 +1,46 @@
+# Phase 2 — add HTTPS listener (:443) to rascaas-gateway (non-QA hosts).
+# QA uses rascaas-gateway-https.qa.yaml instead (hostname rascaas.qa.kovr.ai).
+#
+#   export RASCAAS_HOST=rascaas.example.com
+#   export IAM_CERT_ARN=arn:aws:iam::650251729525:server-certificate/your-cert
+#   sed -e "s|__RASCAAS_GATEWAY_HOSTNAME__|${RASCAAS_HOST}|g" \
+#       -e "s|__IAM_SERVER_CERT_ARN__|${IAM_CERT_ARN}|g" \
+#     helm/_crds/gateway/rascaas-gateway-https.template.yaml | kubectl apply -f -
+---
+apiVersion: gateway.k8s.aws/v1beta1
+kind: LoadBalancerConfiguration
+metadata:
+  name: rascaas-lbc-config
+  namespace: rascaas
+spec:
+  loadBalancerAttributes: []
+  scheme: internet-facing
+  defaultTargetGroupConfiguration:
+    name: rascaas-default-tgc
+  listenerConfigurations:
+    - protocolPort: HTTPS:443
+      defaultCertificate: __IAM_SERVER_CERT_ARN__
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: rascaas-gateway
+  namespace: rascaas
+  annotations:
+    gateway.k8s.aws/load-balancer-configuration: rascaas-lbc-config
+spec:
+  gatewayClassName: alb
+  listeners:
+    - name: http
+      protocol: HTTP
+      port: 80
+      allowedRoutes:
+        namespaces:
+          from: Same
+    - name: https
+      hostname: __RASCAAS_GATEWAY_HOSTNAME__
+      protocol: HTTPS
+      port: 443
+      allowedRoutes:
+        namespaces:
+          from: Same

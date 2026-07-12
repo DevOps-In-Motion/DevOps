@@ -1,0 +1,2 @@
+.env
+helm/_crds/secrets/plain-secrets.yaml
