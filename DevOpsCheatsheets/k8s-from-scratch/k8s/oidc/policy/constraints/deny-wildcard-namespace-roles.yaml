@@ -1,0 +1,13 @@
+apiVersion: constraints.gatekeeper.sh/v1beta1
+kind: K8sDenyWildcardNamespaceRoles
+metadata:
+  name: deny-wildcard-namespace-roles
+  labels:
+    oidc.lab/policy: no-wildcard-roles
+spec:
+  enforcementAction: deny
+  match:
+    kinds:
+      - apiGroups: ["rbac.authorization.k8s.io"]
+        kinds: ["Role"]
+  parameters: {}

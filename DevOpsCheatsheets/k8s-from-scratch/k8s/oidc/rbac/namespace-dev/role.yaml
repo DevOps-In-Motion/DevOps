@@ -1,0 +1,66 @@
+# Tier: namespace-dev — full day-to-day control inside ${NAMESPACE} only.
+# Applied by platform-admin (same pattern as nginx-deployer Role in nginx-app).
+# No cluster-scoped power; no "*" (Gatekeeper denies wildcards on Roles).
+# Covers what this lab's app needs: workloads, Services, Gateway API, certs.
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: oidc-namespace-dev
+  namespace: ${NAMESPACE}
+  labels:
+    oidc.lab/tier: namespace-dev
+rules:
+  - apiGroups: [""]
+    resources:
+      - configmaps
+      - secrets
+      - pods
+      - pods/log
+      - pods/exec
+      - pods/portforward
+      - services
+      - endpoints
+      - persistentvolumeclaims
+      - events
+      - serviceaccounts
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete", "deletecollection"]
+  - apiGroups: ["apps"]
+    resources:
+      - deployments
+      - replicasets
+      - statefulsets
+      - daemonsets
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete", "deletecollection"]
+  - apiGroups: ["batch"]
+    resources:
+      - jobs
+      - cronjobs
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete", "deletecollection"]
+  - apiGroups: ["networking.k8s.io"]
+    resources:
+      - networkpolicies
+      - ingresses
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["gateway.networking.k8s.io"]
+    resources:
+      - gateways
+      - httproutes
+      - referencegrants
+      - grpcroutes
+      - tlsroutes
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["cert-manager.io"]
+    resources:
+      - certificates
+      - certificaterequests
+      - issuers
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["autoscaling"]
+    resources:
+      - horizontalpodautoscalers
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["policy"]
+    resources:
+      - poddisruptionbudgets
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]

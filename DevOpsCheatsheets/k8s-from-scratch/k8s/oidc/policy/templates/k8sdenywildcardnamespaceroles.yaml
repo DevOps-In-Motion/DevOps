@@ -1,0 +1,45 @@
+apiVersion: templates.gatekeeper.sh/v1
+kind: ConstraintTemplate
+metadata:
+  name: k8sdenywildcardnamespaceroles
+  labels:
+    oidc.lab/policy: no-wildcard-roles
+spec:
+  crd:
+    spec:
+      names:
+        kind: K8sDenyWildcardNamespaceRoles
+      validation:
+        openAPIV3Schema:
+          type: object
+          properties:
+            enforceOnKinds:
+              type: array
+              items:
+                type: string
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      rego: |
+        package k8sdenywildcardnamespaceroles
+
+        violation[{"msg": msg}] {
+          input.review.kind.kind == "Role"
+          rule := input.review.object.rules[_]
+          wildcard_verbs(rule)
+          msg := sprintf("Role %v/%v: wildcard verbs (*) are not allowed in namespace-scoped Roles", [input.review.object.metadata.namespace, input.review.object.metadata.name])
+        }
+
+        violation[{"msg": msg}] {
+          input.review.kind.kind == "Role"
+          rule := input.review.object.rules[_]
+          wildcard_resources(rule)
+          msg := sprintf("Role %v/%v: wildcard resources (*) are not allowed in namespace-scoped Roles", [input.review.object.metadata.namespace, input.review.object.metadata.name])
+        }
+
+        wildcard_verbs(rule) {
+          rule.verbs[_] == "*"
+        }
+
+        wildcard_resources(rule) {
+          rule.resources[_] == "*"
+        }

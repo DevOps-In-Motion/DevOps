@@ -1,0 +1,16 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: oidc-namespace-dev
+  namespace: ${NAMESPACE}
+  labels:
+    oidc.lab/tier: namespace-dev
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: oidc-namespace-dev
+subjects:
+  - kind: Group
+    apiGroup: rbac.authorization.k8s.io
+    # IdP group after --oidc-groups-prefix (e.g. oidc:namespace-devs)
+    name: ${OIDC_GROUPS_PREFIX}${GROUP_NAMESPACE_DEV}

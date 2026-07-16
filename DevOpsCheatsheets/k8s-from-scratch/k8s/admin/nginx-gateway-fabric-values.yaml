@@ -1,0 +1,11 @@
+# NGINX Gateway Fabric → GatewayClass "nginx"
+# (chart default: dataplane Service type LoadBalancer for the Gateway address)
+
+nginxGateway:
+  gatewayClassName: nginx
+  gatewayControllerName: gateway.nginx.org/nginx-gateway-controller
+
+nginx:
+  service:
+    type: LoadBalancer
+    loadBalancerIP: 192.168.56.200

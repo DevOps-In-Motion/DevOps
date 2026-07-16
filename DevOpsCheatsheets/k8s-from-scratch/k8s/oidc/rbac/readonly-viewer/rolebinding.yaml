@@ -1,0 +1,15 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: oidc-readonly-viewer
+  namespace: ${NAMESPACE}
+  labels:
+    oidc.lab/tier: readonly-viewer
+subjects:
+  - kind: Group
+    apiGroup: rbac.authorization.k8s.io
+    name: ${OIDC_GROUPS_PREFIX}${GROUP_READONLY_VIEWER}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: oidc-readonly-viewer

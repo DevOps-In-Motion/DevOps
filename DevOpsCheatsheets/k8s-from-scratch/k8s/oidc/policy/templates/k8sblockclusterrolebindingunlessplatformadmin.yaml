@@ -1,0 +1,43 @@
+apiVersion: templates.gatekeeper.sh/v1
+kind: ConstraintTemplate
+metadata:
+  name: k8sblockclusterrolebindingunlessplatformadmin
+  labels:
+    oidc.lab/policy: platform-admin-crb
+spec:
+  crd:
+    spec:
+      names:
+        kind: K8sBlockClusterRoleBindingUnlessPlatformAdmin
+      validation:
+        openAPIV3Schema:
+          type: object
+          properties:
+            allowedGroups:
+              type: array
+              description: Groups permitted to create/update ClusterRoleBindings
+              items:
+                type: string
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      rego: |
+        package k8sblockclusterrolebindingunlessplatformadmin
+
+        violation[{"msg": msg}] {
+          input.review.kind.kind == "ClusterRoleBinding"
+          ops := {"CREATE", "UPDATE"}
+          ops[input.review.operation]
+          not privileged
+          msg := sprintf("ClusterRoleBinding %v denied: requester groups %v must include one of allowedGroups %v (OIDC platform-admin)", [input.review.object.metadata.name, input.review.userInfo.groups, input.parameters.allowedGroups])
+        }
+
+        privileged {
+          g := input.review.userInfo.groups[_]
+          g == input.parameters.allowedGroups[_]
+        }
+
+        # Break-glass: kubeadm certificate admin (system:masters)
+        privileged {
+          g := input.review.userInfo.groups[_]
+          g == "system:masters"
+        }

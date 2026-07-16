@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>NYAN CAT</title>
+  <style>
+    html, body {
+      margin: 0;
+      height: 100%;
+      overflow: hidden;
+      background-color: #0f4d8f;
+      background-image: url("stars.gif");
+      background-repeat: repeat;
+      background-position: center center;
+      background-size: auto;
+      image-rendering: pixelated;
+      font-family: system-ui, sans-serif;
+    }
+    .stage {
+      min-height: 100%;
+      display: grid;
+      place-items: center;
+    }
+    .stage img {
+      width: min(70vw, 420px);
+      height: auto;
+      image-rendering: pixelated;
+    }
+    .meta {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 1.5rem;
+      margin: 0;
+      color: #cfe8ff;
+      font-size: 0.9rem;
+      text-align: center;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+    }
+    .meta a { color: #9cf; }
+  </style>
+</head>
+<body>
+  <div class="stage">
+    <img src="pirate.gif" alt="Pirate Nyan Cat" />
+  </div>
+  <p class="meta">
+    <a href="https://www.nyan.cat/index.php?cat=pirate" target="_blank" rel="noopener">You got nyan'd!</a>
+  </p>
+</body>
+</html>

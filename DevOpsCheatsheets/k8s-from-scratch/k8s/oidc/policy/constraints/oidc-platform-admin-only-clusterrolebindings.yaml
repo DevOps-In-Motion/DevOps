@@ -1,0 +1,19 @@
+# Constraint: only OIDC platform-admin group (plus system:masters break-glass)
+# may create/update ClusterRoleBindings.
+# Replace group to match --oidc-groups-prefix + GROUP_PLATFORM_ADMIN.
+apiVersion: constraints.gatekeeper.sh/v1beta1
+kind: K8sBlockClusterRoleBindingUnlessPlatformAdmin
+metadata:
+  name: oidc-platform-admin-only-clusterrolebindings
+  labels:
+    oidc.lab/policy: platform-admin-crb
+spec:
+  enforcementAction: deny
+  match:
+    kinds:
+      - apiGroups: ["rbac.authorization.k8s.io"]
+        kinds: ["ClusterRoleBinding"]
+  parameters:
+    allowedGroups:
+      # FIND/REPLACE → must equal ${OIDC_GROUPS_PREFIX}${GROUP_PLATFORM_ADMIN}
+      - ${OIDC_GROUPS_PREFIX}${GROUP_PLATFORM_ADMIN}

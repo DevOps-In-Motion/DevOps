@@ -1,0 +1,15 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: oidc-platform-admin
+  labels:
+    oidc.lab/tier: platform-admin
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: oidc-platform-admin
+subjects:
+  - kind: Group
+    apiGroup: rbac.authorization.k8s.io
+    # FIND/REPLACE: must match apiserver --oidc-groups-prefix + IdP group claim value
+    name: ${OIDC_GROUPS_PREFIX}${GROUP_PLATFORM_ADMIN}

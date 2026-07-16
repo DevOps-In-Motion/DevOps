@@ -1,0 +1,16 @@
+# Tier: platform-admin — cluster-wide (creates namespaces, Roles, RoleBindings, etc.).
+# Subject Group = --oidc-groups-prefix + IdP group
+#   → ${OIDC_GROUPS_PREFIX}${GROUP_PLATFORM_ADMIN}  e.g. oidc:platform-admins
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: oidc-platform-admin
+  labels:
+    oidc.lab/tier: platform-admin
+rules:
+  - apiGroups: ["*"]
+    resources: ["*"]
+    verbs: ["*"]
+  - nonResourceURLs: ["*"]
+    verbs: ["*"]

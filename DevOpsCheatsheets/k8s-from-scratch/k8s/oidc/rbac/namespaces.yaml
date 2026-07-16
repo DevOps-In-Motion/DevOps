@@ -1,0 +1,10 @@
+# Admin creates this application namespace (same idea as k8s/admin → nginx-app).
+# Developers and viewers never create namespaces; they only act inside this one
+# via RoleBindings (namespace-dev write, readonly-viewer read).
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ${NAMESPACE}
+  labels:
+    oidc.lab/managed-by: platform-admin

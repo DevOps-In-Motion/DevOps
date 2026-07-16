@@ -1,0 +1,43 @@
+# Vagrant / cluster bring-up (synced folder survives destroy)
+.vagrant/
+join-command.sh
+join-ready
+scripts/join-command.sh
+
+# Agent / session memory (local only)
+ledger.md
+
+# Logs & process state
+*.log
+*.pid
+**/*.pid
+
+# VirtualBox (often dumped into the project cwd)
+*-VBoxHeadless-*.log
+*.vbox
+*.vbox-prev
+
+# macOS
+.DS_Store
+
+# Deployer identity + cluster trust (issued by make admin)
+scripts/nginx/lab-root-ca.crt
+scripts/nginx/nginx-deployer.key
+scripts/nginx/nginx-deployer.crt
+scripts/nginx/nginx-deployer.csr
+scripts/nginx/cluster-ca.crt
+scripts/nginx/nginx-deployer.kubeconfig
+**/controlplane-kubeconfig.yaml
+*.kubeconfig
+*.pem
+
+# Local browse / share tunnels (host-side)
+scripts/nginx/.browse-ssh.pid
+scripts/nginx/.vagrant-worker1-ssh
+scripts/nginx/.ngrok.pid
+scripts/nginx/.ngrok.log
+scripts/nginx/.ngrok-url
+
+# OIDC local values + rendered kubeadm artifacts
+k8s/oidc/placeholders.env
+k8s/oidc/apiserver/generated/

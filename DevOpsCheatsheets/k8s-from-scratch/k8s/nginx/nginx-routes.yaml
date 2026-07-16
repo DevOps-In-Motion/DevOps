@@ -1,0 +1,68 @@
+# Certificate + Gateway + HTTPRoute
+# client → Gateway → HTTPRoute → Service → Pods
+# make browse opens the Gateway address
+
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: nginx-tls
+  namespace: nginx-app
+spec:
+  secretName: nginx-tls
+  commonName: nginx.local
+  dnsNames:
+    - nginx.local
+    - localhost
+  ipAddresses:
+    - 192.168.56.200
+    - 127.0.0.1
+  issuerRef:
+    name: lab-ca-issuer
+    kind: ClusterIssuer
+    group: cert-manager.io
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  duration: 2160h
+  renewBefore: 360h
+
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: nginx
+  namespace: nginx-app
+spec:
+  gatewayClassName: nginx
+  listeners:
+    - name: http
+      protocol: HTTP
+      port: 80
+      allowedRoutes:
+        namespaces:
+          from: Same
+    - name: https
+      protocol: HTTPS
+      port: 443
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - kind: Secret
+            name: nginx-tls
+      allowedRoutes:
+        namespaces:
+          from: Same
+
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: nginx
+  namespace: nginx-app
+spec:
+  parentRefs:
+    - name: nginx
+  rules:
+    - backendRefs:
+        - name: nginx
+          port: 80
