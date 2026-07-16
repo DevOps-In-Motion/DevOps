@@ -24,11 +24,8 @@ EOF
       grep -q controlplane /etc/hosts || echo "127.0.1.1 controlplane" >> /etc/hosts
     SHELL
 
+    # Writes /vagrant/join-command.sh + /vagrant/join-ready for workers
     node.vm.provision "shell", path: "scripts/vm-controlplane-init.sh"
-    node.vm.provision "shell", inline: <<-SHELL
-      sudo kubeadm token create --print-join-command | sudo tee /vagrant/join-command.sh
-      sudo chmod +x /vagrant/join-command.sh
-    SHELL
   end
 
   config.vm.define "worker1" do |node|
@@ -37,21 +34,21 @@ EOF
       grep -q worker1 /etc/hosts || echo "127.0.1.1 worker1" >> /etc/hosts
     SHELL
     node.vm.network "private_network", ip: "192.168.56.102"
-    # Waits for /vagrant/join-command.sh to exist, then joins the cluster
+    # Wait for join-ready (not just join-command.sh) so a stale synced file is never used
     node.vm.provision "shell", inline: <<-SHELL
       if [ -f /etc/kubernetes/kubelet.conf ]; then
         echo "Node already joined, skipping."
         exit 0
       fi
 
-      TIMEOUT=180
+      TIMEOUT=300
       ELAPSED=0
-      while [ ! -f /vagrant/join-command.sh ]; do
+      while [ ! -f /vagrant/join-ready ]; do
         if [ "$ELAPSED" -ge "$TIMEOUT" ]; then
-          echo "Timed out waiting for /vagrant/join-command.sh" >&2
+          echo "Timed out waiting for /vagrant/join-ready from control plane" >&2
           exit 1
         fi
-        echo "Waiting for join-command.sh from control plane..."
+        echo "Waiting for join-ready from control plane..."
         sleep 5
         ELAPSED=$((ELAPSED + 5))
       done
@@ -65,21 +62,21 @@ EOF
       hostnamectl set-hostname worker2
       grep -q worker2 /etc/hosts || echo "127.0.1.1 worker2" >> /etc/hosts
     SHELL
-    # Waits for /vagrant/join-command.sh to exist, then joins the cluster
+    node.vm.network "private_network", ip: "192.168.56.103"
     node.vm.provision "shell", inline: <<-SHELL
       if [ -f /etc/kubernetes/kubelet.conf ]; then
         echo "Node already joined, skipping."
         exit 0
       fi
 
-      TIMEOUT=180
+      TIMEOUT=300
       ELAPSED=0
-      while [ ! -f /vagrant/join-command.sh ]; do
+      while [ ! -f /vagrant/join-ready ]; do
         if [ "$ELAPSED" -ge "$TIMEOUT" ]; then
-          echo "Timed out waiting for /vagrant/join-command.sh" >&2
+          echo "Timed out waiting for /vagrant/join-ready from control plane" >&2
           exit 1
         fi
-        echo "Waiting for join-command.sh from control plane..."
+        echo "Waiting for join-ready from control plane..."
         sleep 5
         ELAPSED=$((ELAPSED + 5))
       done

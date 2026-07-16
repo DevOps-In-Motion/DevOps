@@ -11,14 +11,24 @@ sudo apt-get install -y apt-transport-https ca-certificates curl gpg
 (crontab -l 2>/dev/null; echo "@reboot /sbin/swapoff -a") | crontab - || true
 sudo apt-get update -y
 
-# Create the .conf file to load the modules at bootup
+# Modules required by Kubernetes + kube-proxy IPVS mode
 cat <<EOF | sudo tee /etc/modules-load.d/k8s.conf
 overlay
 br_netfilter
+ip_vs
+ip_vs_rr
+ip_vs_wrr
+ip_vs_sh
+nf_conntrack
 EOF
 
 sudo modprobe overlay
 sudo modprobe br_netfilter
+sudo modprobe ip_vs
+sudo modprobe ip_vs_rr
+sudo modprobe ip_vs_wrr
+sudo modprobe ip_vs_sh
+sudo modprobe nf_conntrack
 
 # Sysctl params required by setup, params persist across reboots
 cat <<EOF | sudo tee /etc/sysctl.d/k8s.conf
@@ -29,6 +39,9 @@ EOF
 
 sudo swapoff -a
 (crontab -l 2>/dev/null; echo "@reboot /sbin/swapoff -a") | crontab - || true
+
+# Userspace tools for kube-proxy IPVS mode
+sudo apt-get install -y ipset ipvsadm
 
 
 
@@ -52,6 +65,16 @@ echo "deb [signed-by=/etc/apt/keyrings/cri-o-apt-keyring.gpg] https://download.o
 
 sudo apt-get update -y
 sudo apt-get install -y cri-o
+
+# Prefer Calico's network name once the CNI conflist is installed (avoids
+# CRI-O sticking on "no CNI configuration file" after Calico lands).
+sudo mkdir -p /etc/crio/crio.conf.d
+cat <<EOF | sudo tee /etc/crio/crio.conf.d/20-cni-default.conf
+[crio.network]
+cni_default_network = "k8s-pod-network"
+network_dir = "/etc/cni/net.d/"
+plugin_dirs = ["/opt/cni/bin/"]
+EOF
 
 sudo systemctl daemon-reload
 sudo systemctl enable crio --now
@@ -105,10 +128,19 @@ sudo apt-get install -y kubelet="$KUBERNETES_INSTALL_VERSION" kubectl="$KUBERNET
 
 
 
-# Add the node IP to KUBELET_EXTRA_ARGS
-local_ip="$(ip --json addr show eth0 | jq -r '.[0].addr_info[] | select(.family == "inet") | .local')"
+# Pin kubelet to the Vagrant host-only NIC (eth1 / 192.168.56.0/24).
+# eth0 is VirtualBox NAT (10.0.2.15 on every VM) and breaks Calico + Service routing.
+local_ip="$(ip --json addr show eth1 2>/dev/null | jq -r '.[0].addr_info[]? | select(.family == "inet") | .local' | head -1 || true)"
+if [[ -z "${local_ip}" || "${local_ip}" == "null" ]]; then
+  local_ip="$(ip -4 -o addr show scope global | awk '/192\.168\.56\./ {print $4}' | cut -d/ -f1 | head -1 || true)"
+fi
+if [[ -z "${local_ip}" ]]; then
+  echo "error: no host-only IP on eth1 / 192.168.56.0/24 — check Vagrant private_network" >&2
+  exit 1
+fi
 
 cat <<EOF | sudo tee /etc/default/kubelet
-KUBELET_EXTRA_ARGS=--node-ip=$local_ip
+KUBELET_EXTRA_ARGS=--node-ip=${local_ip}
 EOF
+echo "kubelet --node-ip=${local_ip}"
 
