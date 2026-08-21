@@ -1,22 +1,22 @@
+# vLLM platforms
 
-# Introduction
+## Active scaffold
 
-This is a quick and dirty way to get all of the secure infra you need to use LLMs on AWS' free
-tier plan. You will find terraform containing all the configuration for your AWS instance, a few shell scripts that the terraform will consume to bootstrap your instance, and some configuration 
-files for the self healing of the API services that will run on your instances.
+**[ray_batch_inference/](ray_batch_inference/)** — offline batch inference with **Ray Data + vLLM**, based on the Databricks [AI Runtime example](https://docs.databricks.com/aws/en/machine-learning/ai-runtime/cli/examples/ray-batch-inference). Defaults to a small public model (`Qwen/Qwen2.5-0.5B-Instruct`) for local GPU testing; `train.yaml` is ready for AIR when you scale up.
 
-## Architecture Overiew
+```bash
+cd ray_batch_inference
+pip install -r requirements.txt
+./scripts/run-local.sh
+```
 
-GitHub Actions → Webhook → AWS API Gateway → Lambda/EC2 (LLM) → Slack API → User
-                                                    ↓
-                                            GitHub API (get user email)
-                                                    ↓
-                                            Slack API (map email → Slack user)
+## Legacy
 
-## Infrastructure List
+- `app/` — old Databricks serverless / custom `LLMPredictor` stub (deprecated; redirects to `ray_batch_inference/`).
+- `terraform/`, `scripts/`, `webhook/` — earlier AWS free-tier / Ollama-oriented infra (separate from the Ray batch path).
 
-- 2x EC2 w/ EBS storage [bastion host & API server]
-- API Gateway
-- security groups for EC2s
+## Scale path
 
-## Terraform Info
+1. Local 1×GPU, 0.5B model  
+2. More GPUs / larger model via env (`MODEL_SOURCE`, `NUM_GPUS`, `TENSOR_PARALLEL_SIZE`)  
+3. Databricks AIR (`air run -f train.yaml`) with a Unity Catalog `OUTPUT_PATH`

@@ -1,0 +1,61 @@
+# Databricks AI Runtime workload (optional).
+# Docs: https://docs.databricks.com/aws/en/machine-learning/ai-runtime/cli/examples/ray-batch-inference
+#
+# Local testing: use scripts/run-local.sh instead of `air run`.
+# When you graduate from 0.5B → 7B, bump MODEL_SOURCE and accelerator_type.
+
+experiment_name: air-ray-batch-inference-local-scale
+
+environment:
+  version: "5"
+  dependencies:
+    - ray[data]==2.56.1
+    - vllm
+    - datasets>=3.0
+    - huggingface_hub>=0.34
+    - hf_transfer
+    - fsspec>=2024.6.1
+    - opencv-python-headless==4.12.0.88
+
+# Start small on AIR; change to GPU_8xH100 + 7B when ready.
+compute:
+  num_accelerators: 1
+  accelerator_type: GPU_1xA10G
+
+code_source:
+  type: snapshot
+  snapshot:
+    root_path: .
+
+command: |
+  cd $CODE_SOURCE_PATH
+  RAY_HEAD_PORT=6379
+  GPUS_PER_NODE=${LOCAL_WORLD_SIZE:-1}
+  if [ "${NODE_RANK:-0}" = "0" ]; then
+    echo "NODE_RANK=0: starting Ray head with $GPUS_PER_NODE GPU(s)..."
+    ray start --head --port=$RAY_HEAD_PORT --num-gpus="$GPUS_PER_NODE" --dashboard-host=0.0.0.0
+    python batch_inference.py
+    ray stop
+  else
+    echo "NODE_RANK=$NODE_RANK: connecting to Ray head at $MASTER_ADDR:$RAY_HEAD_PORT..."
+    for i in $(seq 1 12); do
+      if ray start --address="$MASTER_ADDR:$RAY_HEAD_PORT" --num-gpus="$GPUS_PER_NODE" --block 2>/dev/null; then
+        break
+      fi
+      echo "Attempt $i failed, retrying in 5s..."
+      sleep 5
+    done
+  fi
+
+max_retries: 0
+timeout_minutes: 60
+env_variables:
+  NCCL_SOCKET_IFNAME: eth0
+  MODEL_SOURCE: Qwen/Qwen2.5-0.5B-Instruct
+  NUM_PROMPTS: "100"
+  BATCH_SIZE: "16"
+  MAX_MODEL_LEN: "2048"
+  MAX_TOKENS: "128"
+  TENSOR_PARALLEL_SIZE: "1"
+  # Replace with your Unity Catalog volume when running on Databricks.
+  OUTPUT_PATH: /Volumes/main/default/air_examples/ray_batch_inference

@@ -43,7 +43,7 @@ Hands-on IDP experiments: ephemeral environments, containerized platforms, and L
 |---------|-------------|
 | [`buildkite-vCluster-idp/`](internal_dev_platforms/buildkite-vCluster-idp/) | RaSCaaS IDP that spins up ephemeral vClusters for QA/UAT from a UI, with GitHub Actions, Helm, and TTL cleanup. |
 | [`dind/`](internal_dev_platforms/dind/) | Docker-in-Docker IDP demo that runs a FastAPI + PostgreSQL wiki API (Helm chart) inside a k3d cluster in a privileged container. |
-| [`llm-platforms/`](internal_dev_platforms/llm-platforms/) | LLM platform work, including a vLLM-oriented path for serving models with supporting app and infra layout. |
+| [`llm-platforms/`](internal_dev_platforms/llm-platforms/) | LLM platform work, including Ray Data + vLLM batch inference ([`vLLM/ray_batch_inference/`](internal_dev_platforms/llm-platforms/vLLM/ray_batch_inference/)) for scalable offline generation. |
 
 ---
 

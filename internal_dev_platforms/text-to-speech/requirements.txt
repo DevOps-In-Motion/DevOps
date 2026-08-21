@@ -1,0 +1,4 @@
+assemblyai>=1.0.0
+sounddevice
+numpy
+requests
