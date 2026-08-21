@@ -1,0 +1,28 @@
+{{- if .Values.persistence.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "rascaas.persistence.pvcName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "rascaas.fastapi.labels" . | nindent 4 }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+  annotations:
+    meta.helm.sh/release-name: {{ .Release.Name | quote }}
+    meta.helm.sh/release-namespace: {{ .Release.Namespace | quote }}
+    {{- with .Values.persistence.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  accessModes:
+    - {{ .Values.persistence.accessMode | default "ReadWriteOnce" }}
+  resources:
+    requests:
+      storage: {{ .Values.persistence.size | default "1Gi" }}
+  {{- if .Values.persistence.storageClassName }}
+  storageClassName: {{ .Values.persistence.storageClassName | quote }}
+  {{- end }}
+  {{- if and .Values.persistence.pv.create .Values.persistence.pv.volumeHandle }}
+  volumeName: {{ include "rascaas.persistence.pvName" . }}
+  {{- end }}
+{{- end }}

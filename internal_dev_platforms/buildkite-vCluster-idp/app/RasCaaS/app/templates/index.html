@@ -19,7 +19,7 @@
       </div>
       <div class="kovr-stat">
         <span class="kovr-stat__label">Helm chart</span>
-        <span class="kovr-stat__value" id="stat-helm-version">{{ helm_chart_version | default("0.1.0") }}</span>
+        <span class="kovr-stat__value" id="stat-helm-version">{{ helm_chart_version | default("…") }}</span>
       </div>
     </div>
   </header>
@@ -61,7 +61,11 @@
       <div class="kovr-field-stack">
         <div class="kovr-field-group">
           <label class="kovr-field__label" for="ttl-input">Time to live (TTL)</label>
-          <input id="ttl-input" class="kovr-field" type="text" placeholder="e.g., 72h" disabled />
+          <select id="ttl-input" class="kovr-field" disabled>
+            <option value="3d" selected>3 days</option>
+            <option value="5d">5 days</option>
+            <option value="7d">7 days</option>
+          </select>
         </div>
         <div class="kovr-field-group">
           <label class="kovr-field__label" for="reason-input">Reason for testing</label>
@@ -106,15 +110,25 @@
   <section class="kovr-panel">
     <div class="kovr-panel__head">
       <h2 class="kovr-panel__title">Recent deployments</h2>
-      <span class="kovr-badge kovr-badge--muted" id="history-count">0 this session</span>
+      <div class="kovr-tabs">
+        <button class="kovr-tab kovr-tab--active" data-tab="active" id="tab-active">
+          Active <span class="kovr-badge kovr-badge--muted" id="history-count-active">0</span>
+        </button>
+        <button class="kovr-tab" data-tab="failed" id="tab-failed">
+          Failed <span class="kovr-badge kovr-badge--muted" id="history-count-failed">0</span>
+        </button>
+      </div>
     </div>
-    <ul id="history-list" class="kovr-history">
-      <li class="kovr-history__empty">No deployments yet this session.</li>
+    <ul id="history-list-active" class="kovr-history">
+      <li class="kovr-history__empty">No active deployments.</li>
+    </ul>
+    <ul id="history-list-failed" class="kovr-history" hidden>
+      <li class="kovr-history__empty">No failed deployments.</li>
     </ul>
   </section>
 </div>
 {% endblock %}
 
 {% block scripts %}
-<script src="/static/js/dispatch.js" defer></script>
+<script src="/static/js/dispatch.js?v={{ app_version }}" defer></script>
 {% endblock %}

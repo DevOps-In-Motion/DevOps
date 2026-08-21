@@ -1,0 +1,42 @@
+{{- if .Values.uatTempEcrCleanup.enabled }}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ printf "%s-uat-temp-ecr-cleanup" .Release.Name | trunc 52 | trimSuffix "-" }}
+  namespace: {{ include "rascaas.namespace" . }}
+  labels:
+    {{- include "rascaas.labels" . | nindent 4 }}
+    app.kubernetes.io/component: uat-temp-ecr-cleanup
+spec:
+  schedule: {{ .Values.uatTempEcrCleanup.schedule | quote }}
+  concurrencyPolicy: {{ .Values.uatTempEcrCleanup.concurrencyPolicy | default "Forbid" }}
+  successfulJobsHistoryLimit: {{ .Values.uatTempEcrCleanup.successfulJobsHistoryLimit | default 3 }}
+  failedJobsHistoryLimit: {{ .Values.uatTempEcrCleanup.failedJobsHistoryLimit | default 3 }}
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        metadata:
+          labels:
+            {{- include "rascaas.labels" . | nindent 12 }}
+            app.kubernetes.io/component: uat-temp-ecr-cleanup
+        spec:
+          serviceAccountName: {{ include "rascaas.uatTempEcrCleanup.serviceAccountName" . }}
+          restartPolicy: OnFailure
+          {{- include "rascaas.imagePullSecrets" . | nindent 10 }}
+          containers:
+            - name: ecr-cleanup
+              image: {{ include "rascaas.uatTempEcrCleanup.image" . | quote }}
+              imagePullPolicy: {{ .Values.uatTempEcrCleanup.imagePullPolicy | default "IfNotPresent" }}
+              env:
+                - name: ECR_UAT_TEMP_REPO
+                  value: {{ .Values.uatTempEcrCleanup.repository | quote }}
+                - name: RETENTION_DAYS
+                  value: {{ .Values.uatTempEcrCleanup.retentionDays | quote }}
+                - name: AWS_REGION
+                  value: {{ .Values.uatTempEcrCleanup.awsRegion | default "us-west-2" | quote }}
+                - name: DRY_RUN
+                  value: {{ ternary "1" "0" (.Values.uatTempEcrCleanup.dryRun | default false) | quote }}
+              resources:
+                {{- toYaml .Values.uatTempEcrCleanup.resources | nindent 16 }}
+{{- end }}

@@ -1,0 +1,69 @@
+# Maps GitHub repository names (basename of owner/repo) to Kovr stack build + Helm keys.
+# Used by .github/workflows/uat-deploy.yml (GitHub repo: platform; local path: platform-testing/).
+#
+# Verified 2026-07-16 via `gh` against org kovr-ai (all private):
+#   bff-service-backend, ds, ai-workers, llm-gateway, frontend-app, kovr-resource-collector
+# Missing (no repo): ai-app-server — do not list as buildable variance.
+# Default branches: most = main; kovr-resource-collector = prod-deploy (pass branch explicitly).
+#
+# helm_key: top-level key in umbrella chart values
+# image:    ECR repository name (without registry) — variance digests go to kovr-uat-temp
+
+services:
+  bff-service-backend:
+    helm_key: bff-backend
+    image: bff-backend
+    context: "."
+    dockerfile: Dockerfile
+    service_type: nodejs
+    build_secrets:
+      - id: npm_token
+        env: NPM_TOKEN
+
+  ds:
+    helm_key: ds-service
+    image: ds-service
+    context: "."
+    dockerfile: Dockerfile
+    service_type: python
+
+  ai-workers:
+    helm_key: ai-workers
+    image: ai-workers
+    context: "."
+    dockerfile: Dockerfile
+    service_type: python
+
+  llm-gateway:
+    helm_key: llm-gateway
+    image: llm-gateway
+    context: "."
+    dockerfile: Dockerfile
+    service_type: python
+
+  frontend-app:
+    helm_key: frontend-app
+    image: frontend
+    context: "."
+    dockerfile: Dockerfile
+    service_type: frontend
+    build_secrets:
+      - id: npm_token
+        env: NPM_TOKEN
+
+  kovr-resource-collector:
+    helm_key: kovr-resource-collector
+    image: kovr-resource-collector
+    context: "."
+    dockerfile: Dockerfile
+    service_type: python
+
+# Not buildable via UAT variance (no kovr-ai/<name> application repo, or not a service).
+aliases:
+  helm-charts: null
+  helm: null
+  platform-testing: null
+  platform: null
+  RasCaaS: null
+  ai-app-server: null
+  askai: null

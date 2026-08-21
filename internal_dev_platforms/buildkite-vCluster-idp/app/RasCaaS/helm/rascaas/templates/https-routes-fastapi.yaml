@@ -1,5 +1,16 @@
 {{- if .Values.gateway.enabled }}
-# API and probe paths — routed directly to FastAPI (bypass oauth2-proxy).
+# Probes + runner callback — routed directly to FastAPI (bypass oauth2-proxy).
+# Authenticated browser /api/* must go through oauth2-proxy (catch-all / on
+# oauth2proxy-frontend-route) so X-Auth-Request-* headers are set.
+# Do NOT PathPrefix /api/repos|/api/branches|/api/trigger here — that
+# skips the proxy and FastAPI returns 401 for browser cookie sessions.
+# Keep /api/runner here (GHA runners POST with RUNNER_CALLBACK_TOKEN).
+#
+# After changing these matches, confirm the ALB listener has /api/runner*
+# → FastAPI with priority BEFORE catch-all /* → oauth2 (see
+# helm/_crds/gateway/README.md § Required ALB listener rules). Also confirm
+# no stale /api/repos|/api/branches|/api/trigger rules (LBC needs
+# SetRulePriorities — see iam/policy-qa-kovr-lbc-set-rule-priorities.json).
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
@@ -20,19 +31,14 @@ spec:
     - matches:
         - path:
             type: PathPrefix
-            value: /api/trigger
-        - path:
-            type: PathPrefix
-            value: /api/repos
-        - path:
-            type: PathPrefix
-            value: /api/branches
-        - path:
-            type: PathPrefix
             value: /health
         - path:
             type: PathPrefix
             value: /ready
+        # GitHub Actions runner progress (shared-secret auth on FastAPI — not oauth2)
+        - path:
+            type: PathPrefix
+            value: /api/runner
       backendRefs:
         - group: ""
           kind: Service

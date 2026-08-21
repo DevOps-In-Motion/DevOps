@@ -1,0 +1,42 @@
+{{- /*
+Static PersistentVolume — opt-in only.
+
+Default QA/EKS path: leave persistence.pv.create=false. The PVC uses storageClass
+gp3; the EBS CSI driver dynamically creates the backing PersistentVolume.
+
+Set persistence.pv.create=true and persistence.pv.volumeHandle=vol-… only when
+binding to a pre-existing EBS volume.
+*/ -}}
+{{- if and .Values.persistence.enabled .Values.persistence.pv.create .Values.persistence.pv.volumeHandle }}
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: {{ include "rascaas.persistence.pvName" . }}
+  labels:
+    {{- include "rascaas.fastapi.labels" . | nindent 4 }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+  annotations:
+    meta.helm.sh/release-name: {{ .Release.Name | quote }}
+    meta.helm.sh/release-namespace: {{ .Release.Namespace | quote }}
+    {{- with .Values.persistence.pv.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  capacity:
+    storage: {{ .Values.persistence.size | default "1Gi" }}
+  accessModes:
+    - {{ .Values.persistence.accessMode | default "ReadWriteOnce" }}
+  persistentVolumeReclaimPolicy: {{ .Values.persistence.pv.reclaimPolicy | default "Retain" }}
+  {{- if .Values.persistence.storageClassName }}
+  storageClassName: {{ .Values.persistence.storageClassName | quote }}
+  {{- end }}
+  csi:
+    driver: {{ .Values.persistence.pv.csiDriver | default "ebs.csi.aws.com" | quote }}
+    volumeHandle: {{ .Values.persistence.pv.volumeHandle | quote }}
+    fsType: {{ .Values.persistence.pv.fsType | default "ext4" | quote }}
+  claimRef:
+    apiVersion: v1
+    kind: PersistentVolumeClaim
+    namespace: {{ .Release.Namespace }}
+    name: {{ include "rascaas.persistence.pvcName" . }}
+{{- end }}

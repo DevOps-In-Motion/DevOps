@@ -43,7 +43,12 @@ def main() -> int:
         print(f"Missing {ENV_PATH}", file=sys.stderr)
         return 1
     env = load_env(ENV_PATH)
-    required = ("GITHUB_PRIVATE_KEY", "OAUTH2_PROXY_CLIENT_SECRET", "OAUTH2_PROXY_COOKIE_SECRET")
+    required = (
+        "GITHUB_PRIVATE_KEY",
+        "OAUTH2_PROXY_CLIENT_SECRET",
+        "OAUTH2_PROXY_COOKIE_SECRET",
+        "RUNNER_CALLBACK_TOKEN",
+    )
     missing = [k for k in required if not env.get(k)]
     if missing:
         print(f"Missing in .env: {', '.join(missing)}", file=sys.stderr)
@@ -52,6 +57,7 @@ def main() -> int:
     pem = format_pem(env["GITHUB_PRIVATE_KEY"])
     client = env["OAUTH2_PROXY_CLIENT_SECRET"]
     cookie = env["OAUTH2_PROXY_COOKIE_SECRET"]
+    runner_token = env["RUNNER_CALLBACK_TOKEN"]
     if len(cookie) not in (16, 24, 32):
         print(f"OAUTH2_PROXY_COOKIE_SECRET must be 16, 24, or 32 bytes, got {len(cookie)}", file=sys.stderr)
         return 1
@@ -72,6 +78,7 @@ type: Opaque
 stringData:
   github-private-key: |
 {indented_pem}
+  runner-callback-token: {runner_token}
 ---
 apiVersion: v1
 kind: Secret

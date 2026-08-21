@@ -1,0 +1,37 @@
+{{- if .Values.hostCluster.rbac.create }}
+{{/*
+  Cluster-scoped reader: each UAT env is ns+release tmp-<repo>-<branch>
+  (one vCluster per namespace). Also covers legacy shared hostCluster.vclusterNamespace.
+*/}}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ .Values.fastapi.name }}-vcluster-reader
+  labels:
+    {{- include "rascaas.labels" . | nindent 4 }}
+rules:
+  - apiGroups: [""]
+    resources: ["namespaces"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["apps"]
+    resources: ["statefulsets", "deployments"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["pods", "services", "secrets"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ .Values.fastapi.name }}-vcluster-reader
+  labels:
+    {{- include "rascaas.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ .Values.fastapi.name }}-vcluster-reader
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "rascaas.fastapi.serviceAccountName" . }}
+    namespace: {{ .Release.Namespace }}
+{{- end }}

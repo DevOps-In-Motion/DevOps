@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/static/css/rascaas.css" />
+  <link rel="stylesheet" href="/static/css/rascaas.css?v={{ app_version }}" />
   {% block head %}{% endblock %}
 </head>
 <body class="kovr-app">
@@ -34,10 +34,14 @@
     </a>
     <div class="kovr-appbar__spacer"></div>
     <span class="kovr-chip">Internal Development Platform</span>
-    <span class="kovr-badge kovr-badge--muted">App {{ app_version | default("0.1.0") }}</span>
-    <span class="kovr-badge kovr-badge--primary">Helm {{ helm_chart_version | default("0.1.0") }}</span>
+    <span class="kovr-badge kovr-badge--muted" id="app-version-badge">App {{ app_version | default("…") }}</span>
+    <span class="kovr-badge kovr-badge--primary" id="helm-version-badge">Helm {{ helm_chart_version | default("…") }}</span>
     <a
+      {% if oidc_logout_url %}
+      href="/oauth2/sign_out?rd={{ oidc_logout_url | urlencode }}"
+      {% else %}
       href="/oauth2/sign_out?rd=/"
+      {% endif %}
       class="kovr-appbar__signout"
       id="sign-out-link"
       title="End your session and return to sign-in"

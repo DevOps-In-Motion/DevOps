@@ -7,4 +7,5 @@ metadata:
     app.kubernetes.io/name: rascaas
     app.kubernetes.io/component: fastapi
   annotations:
-    eks.amazonaws.com/role-arn: arn:aws:iam::ACCOUNT_ID:role/rascaas-secrets-reader
+    # QA IRSA — CSI mount of rascaas-secrets (SM). Role: iam/policy-platform-rascaas.json
+    eks.amazonaws.com/role-arn: arn:aws:iam::650251729525:role/platform-rascaas

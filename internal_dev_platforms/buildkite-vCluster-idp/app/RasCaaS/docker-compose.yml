@@ -43,6 +43,8 @@ services:
       - .env
     environment:
       ENVIRONMENT: ${ENVIRONMENT:-production}
+      SQLITE_PATH: ${SQLITE_PATH:-/tmp/rascaas.db}
+      VCLUSTER_HOST_NAMESPACE: ${VCLUSTER_HOST_NAMESPACE:-vcluster}
       OIDC_ISSUER_URL: ${OIDC_ISSUER_URL:-http://localhost:8080/realms/rascaas}
       OIDC_DISCOVERY_URL: ${OIDC_DISCOVERY_URL:-http://keycloak:8080/realms/rascaas}
       OIDC_JWKS_URL: ${OIDC_JWKS_URL:-http://keycloak:8080/realms/rascaas/protocol/openid-connect/certs}

@@ -1,0 +1,12 @@
+# Legacy shared host namespace for vCluster control planes (pre multi-tenant).
+# New UAT envs use a dedicated namespace named after the vCluster (vcluster ≥0.25:
+# only one virtual cluster per namespace). Keep this Namespace for old releases;
+# RaSCaaS still scans it. Apply once if missing:
+#   kubectl apply -f namespace.yaml
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: vcluster
+  labels:
+    app.kubernetes.io/part-of: rascaas
+    app.kubernetes.io/component: vcluster-host

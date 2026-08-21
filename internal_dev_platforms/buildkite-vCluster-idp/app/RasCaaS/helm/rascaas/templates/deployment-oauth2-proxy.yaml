@@ -28,7 +28,7 @@ spec:
       affinity:
 {{ toYaml $oauth.affinity | indent 8 }}
 {{- end }}
-{{- include "rascaas.pod.csiVolumes" . }}
+{{- include "rascaas.pod.oauth2Volumes" . }}
       containers:
         - name: oauth2-proxy
           image: {{ $oauth.image }}
@@ -36,7 +36,7 @@ spec:
           ports:
             - name: http
               containerPort: {{ $oauth.port }}
-{{- include "rascaas.container.csiVolumeMounts" . }}
+{{- include "rascaas.container.oauth2VolumeMounts" . }}
           env:
             - name: OAUTH2_PROXY_PROVIDER
               value: oidc

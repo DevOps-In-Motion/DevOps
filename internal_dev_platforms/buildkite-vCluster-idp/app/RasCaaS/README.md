@@ -33,9 +33,34 @@ Site with dropdown menu for:
 
 ## Cluster Deployment Flow
 
-Form is filled (button pressed) → GitHub Actions **`uat-deploy.yml`** on **`kovr-ai/platform`** → build **variance** image for the selected repo → Helm deploy full stack (baseline images for all other services) → vCluster / QA.
+Form is filled (button pressed) → GitHub Actions **`uat-deploy.yml`** on **`kovr-ai/platform`** → build **variance** image into ECR **`kovr-uat-temp`** → Helm deploy full stack (`:latest` for all other services) → vCluster / QA.
+
+A **separate** CronJob image (`rascaas-uat-ecr-cleanup`, see [`ecr-cleanup/`](ecr-cleanup/)) runs on the host and deletes aged tags from `kovr-uat-temp` after **14 calendar days**. It is **not** the RaSCaaS IDP image or pod.
 
 > **Naming:** local monorepo folder = `platform-testing`; GitHub repository = `platform`.
+
+### Deployment lifecycle & visibility
+
+`GET /api/clusters` (the deployments list in the UI) shows a deployment **only when the pipeline finished and actually deployed** — i.e. GitHub-run phase `ready` — **and** it has not been confirmed torn down. In-progress (`provisioning` / `syncing`) and `failed` runs never appear in the list; watch those live via `GET /api/clusters/{id}/stream` instead.
+
+Teardown is **event-driven** — RaSCaaS does not poll the cluster. Whoever deletes a vCluster (the TTL cleanup Job, a manual teardown) must POST a deletion event:
+
+```http
+POST /api/runner/deleted
+X-RaSCaaS-Token: <RUNNER_CALLBACK_TOKEN>
+Content-Type: application/json
+
+{ "deployment_id": "<id>" }        # or { "vcluster_name": "tmp-<repo>-<branch>" }
+```
+
+On receipt the deployment is marked **`deleting`** (still shown). After `DELETE_VERIFY_DELAY_S` (default **180s**) the backend does a **single** cluster check:
+
+| Re-check result | Lifecycle | Shown in list? |
+|---|---|---|
+| vCluster gone | `deleted` | no (hidden) |
+| vCluster still live | `active` | yes (kept) |
+
+Pending verifications are resumed on pod startup, so a restart mid-window still re-checks. `lifecycle` / `visible` are included in each deployment's JSON.
 
 **Platform-only:** all builds and Helm deploys run on the **platform** GitHub repo — not in each service repo (smaller blast radius).
 
@@ -44,6 +69,7 @@ Form is filled (button pressed) → GitHub Actions **`uat-deploy.yml`** on **`ko
 | `.github/workflows/uat-deploy.yml` | Sole workflow entrypoint |
 | `workflows/rascaas/stack-services.yaml` | Repo → Helm key / ECR image map |
 | `workflows/rascaas/render_uat_overlay.py` | Helm overlay generator |
+| `RasCaaS/ecr-cleanup/` | Standalone temp-ECR GC image |
 
 See `platform-testing/workflows/rascaas/README.md`.
 
@@ -54,9 +80,9 @@ GITHUB_DISPATCH_REPO=kovr-ai/platform
 DEFAULT_WORKFLOW=uat-deploy.yml
 ```
 
-RaSCaaS passes `variance_repo` = UI-selected service; the platform workflow checks out that repo, builds one image, deploys the stack with baseline images for all other services.
+RaSCaaS passes `variance_repo` = UI-selected service; the platform workflow checks out that repo, builds one image into the temp ECR repo, deploys the stack with `:latest` for all other services.
 
-GitHub **variables/secrets** live only on **`kovr-ai/platform`**: `ECR_REGISTRY`, `AWS_REGION`, `AWS_DEPLOY_ROLE_ARN`, `VCLUSTER_KUBECONFIG_B64` (deploy into vCluster), `VCLUSTER_HOST_KUBECONFIG_B64` (TTL cleanup Job on host), `NPM_TOKEN`. 
+GitHub **variables/secrets** live only on **`kovr-ai/platform`**: `ECR_REGISTRY`, `AWS_REGION`, `AWS_DEPLOY_ROLE_ARN` (ECR), optional `AWS_EKS_DEPLOY_ROLE_ARN` (defaults to `DevopsCICDRole` like other QA EKS deploys), optional `EKS_CLUSTER_NAME` / `ECR_UAT_TEMP_REPO`, `NPM_TOKEN`. Host cluster auth is OIDC + `aws eks update-kubeconfig` — **no** kubeconfig secret.
 
 ## Auth
 
@@ -84,13 +110,15 @@ Wait until Keycloak is healthy (~60–90s on first boot). Then open:
 
 Use **4180** only. FastAPI is **not** exposed on port 8000 (internal to Docker). The compose stack sets `TRUST_OAUTH2_PROXY_IDENTITY=true` so `/api/*` accepts oauth2-proxy identity headers after you sign in.
 
-**Sign out:** use **Sign out** in the app bar (calls oauth2-proxy `/oauth2/sign_out`, clears the session cookie, returns to sign-in).
+**Sign out:** use **Sign out** in the app bar (oauth2-proxy `/oauth2/sign_out`). With Cognito, set `OIDC_LOGOUT_URL` to the Hosted UI `/logout` URL and `OAUTH2_PROXY_WHITELIST_DOMAINS` to the Cognito domain — otherwise clearing the proxy cookie alone immediately SSO-logs you back in.
 
 **Troubleshooting: “Failed to load repositories”**
 
 | Symptom | Likely cause | Fix |
 |---------|----------------|-----|
-| HTTP 401 on `/api/repos` | Not signed in on **:4180** (or stale session) | Open **http://localhost:4180**, log in (`dev` / `dev`), hard-refresh |
+| HTTP 401 on `/api/repos` (local) | Not signed in on **:4180** (or stale session) | Open **http://localhost:4180**, log in (`dev` / `dev`), hard-refresh |
+| HTTP 401 on `/api/repos` (QA) with `server: uvicorn` while signed in; `/api/clusters` OK | **Stale ALB rules** still send `/api/repos` → FastAPI (bypass oauth2-proxy) | See [`helm/_crds/gateway/README.md`](helm/_crds/gateway/README.md) § Stale ALB listener rules; ensure LBC can `SetRulePriorities` ([`iam/README.md`](iam/README.md)) |
+| Failed tab empty; live log only 2 dispatch lines; GHA shows `rascaas_notify: ok status=200` | ALB **missing `/api/runner*`** → oauth2 catch-all; FastAPI never gets runner POSTs | [`helm/_crds/gateway/README.md`](helm/_crds/gateway/README.md) § Required ALB listener rules (`create-rule` priority before `/*`) |
 | HTTP **500** on `/api/repos` (proxy works, no repos) | JWT validation tried to fetch JWKS at `localhost:8080` inside the container | `docker compose up --build` — app trusts `X-Auth-Request-*` first and uses `OIDC_JWKS_URL=http://keycloak:8080/.../certs` |
 | HTTP 401 + “Invalid token” | OIDC access token not validating | Same as above; sign in again on **:4180** |
 | HTTP 502 + GitHub message in toast | GitHub App credentials / permissions | Fix `GITHUB_PRIVATE_KEY`, `GITHUB_INSTALLATION_ID`, repo access on the app install |
@@ -272,7 +300,7 @@ Leave `GITHUB_*` empty for mock repos/branches/SSE during UI-only local work.
 | `OIDC_CLIENT_SECRET` | `oauth2proxy-secret` → `client-secret` |
 | `OAUTH2_COOKIE_SECRET` | `oauth2proxy-secret` → `cookie-secret` |
 
-`GITHUB_APP_ID` and `GITHUB_INSTALLATION_ID` stay in **Helm values** (not in SM). IRSA: `helm/_crds/secrets/iam-rascaas-secrets-reader-policy.json` on `rascaas-sa` / `oauth2proxy-sa`.
+`GITHUB_APP_ID` and `GITHUB_INSTALLATION_ID` stay in **Helm values** (not in SM). IRSA role `platform-rascaas` on `rascaas-sa` / `oauth2proxy-sa` (`iam/policy-platform-rascaas.json`).
 
 **`secrets.mode=plain`:** copy `helm/_crds/secrets/plain-secrets.example.yaml` → `plain-secrets.yaml`, fill `stringData`, `kubectl apply -f plain-secrets.yaml` before `helm install`.
 
@@ -335,7 +363,7 @@ Console: **User pool → App integration → App clients → Create app client**
 | App type | Traditional web application (or SPA if your standard) |
 | OAuth 2.0 grant types | **Authorization code grant** |
 | Allowed callback URLs | `https://rascaas.qa.kovr.ai/oauth2/callback` |
-| Allowed sign-out URLs (optional) | `https://rascaas.qa.kovr.ai/` |
+| Allowed sign-out URLs | `https://rascaas.qa.kovrai.com/` (must match `logout_uri` in `OIDC_LOGOUT_URL`) |
 | OpenID Connect scopes | `openid`, `email` (add `profile` if needed) |
 | Client secret | Generate a secret (required for oauth2-proxy) |
 

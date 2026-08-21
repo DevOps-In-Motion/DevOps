@@ -1,0 +1,16 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "AllowSetRulePrioritiesWithoutClusterTag",
+      "Effect": "Allow",
+      "Action": [
+        "elasticloadbalancing:SetRulePriorities",
+        "elasticloadbalancing:ModifyRule",
+        "elasticloadbalancing:CreateRule",
+        "elasticloadbalancing:DeleteRule"
+      ],
+      "Resource": "*"
+    }
+  ]
+}

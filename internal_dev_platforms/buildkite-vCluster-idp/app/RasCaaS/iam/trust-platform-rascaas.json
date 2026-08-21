@@ -1,0 +1,24 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "AllowEksRascaasServiceAccounts",
+      "Effect": "Allow",
+      "Principal": {
+        "Federated": "arn:aws:iam::650251729525:oidc-provider/oidc.eks.us-west-2.amazonaws.com/id/392051447081F2632D55463CBA6E2F2C"
+      },
+      "Action": "sts:AssumeRoleWithWebIdentity",
+      "Condition": {
+        "StringEquals": {
+          "oidc.eks.us-west-2.amazonaws.com/id/392051447081F2632D55463CBA6E2F2C:aud": "sts.amazonaws.com"
+        },
+        "StringLike": {
+          "oidc.eks.us-west-2.amazonaws.com/id/392051447081F2632D55463CBA6E2F2C:sub": [
+            "system:serviceaccount:rascaas:rascaas-sa",
+            "system:serviceaccount:rascaas:oauth2proxy-sa"
+          ]
+        }
+      }
+    }
+  ]
+}

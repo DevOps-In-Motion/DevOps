@@ -1,0 +1,13 @@
+# Optional standalone SA when not creating via Helm uatTempEcrCleanup.
+# Prefer enabling the chart CronJob (creates SA + CronJob together).
+# Attach IAM policy: iam/policy-rascaas-uat-temp-ecr-cleanup.json
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: rascaas-uat-temp-ecr-cleanup-sa
+  namespace: rascaas
+  labels:
+    app.kubernetes.io/name: rascaas
+    app.kubernetes.io/component: uat-temp-ecr-cleanup
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::650251729525:role/rascaas-uat-temp-ecr-cleanup

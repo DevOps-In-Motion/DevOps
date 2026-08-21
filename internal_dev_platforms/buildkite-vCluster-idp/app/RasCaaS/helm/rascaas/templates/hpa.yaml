@@ -1,3 +1,4 @@
+{{- if not .Values.persistence.enabled }}
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
@@ -27,3 +28,4 @@ spec:
         target:
           type: Utilization
           averageUtilization: 80
+{{- end }}

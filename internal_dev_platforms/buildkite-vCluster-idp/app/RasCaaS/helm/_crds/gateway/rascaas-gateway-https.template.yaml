@@ -1,11 +1,13 @@
 # Phase 2 — add HTTPS listener (:443) to rascaas-gateway (non-QA hosts).
-# QA uses rascaas-gateway-https.qa.yaml instead (hostname rascaas.qa.kovr.ai).
+# QA uses rascaas-gateway-https.qa.yaml instead (hostname rascaas.qa.kovrai.com).
 #
 #   export RASCAAS_HOST=rascaas.example.com
-#   export IAM_CERT_ARN=arn:aws:iam::650251729525:server-certificate/your-cert
+#   export IAM_CERT_ARN=arn:aws:acm:us-west-2:ACCOUNT:certificate/UUID
 #   sed -e "s|__RASCAAS_GATEWAY_HOSTNAME__|${RASCAAS_HOST}|g" \
 #       -e "s|__IAM_SERVER_CERT_ARN__|${IAM_CERT_ARN}|g" \
 #     helm/_crds/gateway/rascaas-gateway-https.template.yaml | kubectl apply -f -
+#
+# Attach LBC via Gateway.spec.infrastructure.parametersRef (not annotation).
 ---
 apiVersion: gateway.k8s.aws/v1beta1
 kind: LoadBalancerConfiguration
@@ -26,10 +28,13 @@ kind: Gateway
 metadata:
   name: rascaas-gateway
   namespace: rascaas
-  annotations:
-    gateway.k8s.aws/load-balancer-configuration: rascaas-lbc-config
 spec:
   gatewayClassName: alb
+  infrastructure:
+    parametersRef:
+      group: gateway.k8s.aws
+      kind: LoadBalancerConfiguration
+      name: rascaas-lbc-config
   listeners:
     - name: http
       protocol: HTTP

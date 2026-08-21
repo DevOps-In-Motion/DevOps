@@ -1,0 +1,29 @@
+{{- include "rascaas.secrets.validate" . -}}
+RaSCaaS {{ .Release.Name }} in {{ .Release.Namespace }}
+  URL:    {{ include "rascaas.appBaseUrl" . }}
+  Image:  {{ .Values.fastapi.image }}
+  Secrets: {{ .Values.secrets.mode | default "plain" }}{{- if eq (include "rascaas.secrets.csiEnabled" .) "true" }} (SM rascaas-secrets → {{ .Values.fastapi.secretName }}{{- if .Values.oauth2proxy.port }} / {{ .Values.oauth2proxy.secretName }}{{- end }}){{- end }}
+
+  kubectl get pods -n {{ .Release.Namespace }}
+  kubectl get secret {{ .Values.fastapi.secretName }}{{- if .Values.oauth2proxy.port }} {{ .Values.oauth2proxy.secretName }}{{- end }} -n {{ .Release.Namespace }}
+{{- if .Values.gateway.enabled }}
+  kubectl get gateway,httproute -n {{ include "rascaas.gateway.namespace" . }}
+{{- end }}
+{{- if .Values.persistence.enabled }}
+
+SQLite PVC (RWO — one writer; chart uses strategy.type=Recreate):
+  PVC: {{ include "rascaas.persistence.pvcName" . }}
+  Verify: kubectl get deploy/{{ .Values.fastapi.name }}-deployment -n {{ .Release.Namespace }} -o jsonpath='{.spec.strategy.type}{"\n"}'
+  Expect: Recreate
+  If Multi-Attach / ContainerCreating stuck (force-delete or leftover attach):
+    kubectl scale deploy/{{ .Values.fastapi.name }}-deployment -n {{ .Release.Namespace }} --replicas=0
+    kubectl wait --for=delete pod -n {{ .Release.Namespace }} -l app.kubernetes.io/component=fastapi --timeout=120s
+    kubectl get volumeattachment | grep {{ include "rascaas.persistence.pvcName" . }} || true
+    kubectl scale deploy/{{ .Values.fastapi.name }}-deployment -n {{ .Release.Namespace }} --replicas=1
+{{- end }}
+{{- if eq (include "rascaas.secrets.csiEnabled" .) "true" }}
+
+CSI: SM rascaas-secrets must include GITHUB_PRIVATE_KEY + RUNNER_CALLBACK_TOKEN (and oauth2 keys).
+  Missing key → CrashLoop "couldn't find key … in Secret"
+  kubectl get secret {{ .Values.fastapi.secretName }} -n {{ .Release.Namespace }} -o jsonpath='{range $k,$v := .data}{$k}{"\n"}{end}'
+{{- end }}

@@ -4,9 +4,16 @@
 #   kubectl apply -f helm/_crds/gateway/rascaas-gateway-base.yaml
 #
 # After status.addresses is set, apply HTTPS:
-#   QA:  helm/_crds/gateway/rascaas-gateway-https.qa.yaml (edit IAM cert ARN first)
-#   Other: rascaas-gateway-https.template.yaml (sed placeholders)
+#   QA:  helm/_crds/gateway/rascaas-gateway-https.qa.yaml
+#
+# LBC v3.4+ (QA):
+#   - Attach LoadBalancerConfiguration via Gateway.spec.infrastructure.parametersRef
+#     (same as drawhaus/excalidraw). Annotation alone does NOT apply scheme —
+#     LBC infers internal → internal-* ALB your Mac cannot reach.
+#   - ClusterIP backends need Service-level TargetGroupConfiguration
+#     (targetReference + targetType: ip).
 ---
+# Gateway default (no targetReference) — referenced by LoadBalancerConfiguration
 apiVersion: gateway.k8s.aws/v1beta1
 kind: TargetGroupConfiguration
 metadata:
@@ -15,20 +22,49 @@ metadata:
 spec:
   defaultConfiguration:
     targetType: ip
+---
+# oauth2-proxy Service (ClusterIP :80 → pod :4180)
+apiVersion: gateway.k8s.aws/v1beta1
+kind: TargetGroupConfiguration
+metadata:
+  name: oauth2proxy-tgc
+  namespace: rascaas
+spec:
+  targetReference:
+    kind: Service
+    name: oauth2proxy
+  defaultConfiguration:
+    targetType: ip
   routeConfigurations:
     - routeIdentifier:
         kind: HTTPRoute
         namespace: rascaas
-        name: oauth2proxy-https-redirect
+        name: oauth2proxy-frontend-route
       targetGroupProps:
+        targetType: ip
         healthCheckConfig:
           healthCheckProtocol: HTTP
           healthCheckPath: /ping
+---
+# FastAPI Service (ClusterIP :8000)
+apiVersion: gateway.k8s.aws/v1beta1
+kind: TargetGroupConfiguration
+metadata:
+  name: rascaas-fastapi-tgc
+  namespace: rascaas
+spec:
+  targetReference:
+    kind: Service
+    name: rascaas
+  defaultConfiguration:
+    targetType: ip
+  routeConfigurations:
     - routeIdentifier:
         kind: HTTPRoute
         namespace: rascaas
         name: rascaas-api-route
       targetGroupProps:
+        targetType: ip
         healthCheckConfig:
           healthCheckProtocol: HTTP
           healthCheckPath: /health
@@ -49,10 +85,13 @@ kind: Gateway
 metadata:
   name: rascaas-gateway
   namespace: rascaas
-  annotations:
-    gateway.k8s.aws/load-balancer-configuration: rascaas-lbc-config
 spec:
   gatewayClassName: alb
+  infrastructure:
+    parametersRef:
+      group: gateway.k8s.aws
+      kind: LoadBalancerConfiguration
+      name: rascaas-lbc-config
   listeners:
     - name: http
       protocol: HTTP

@@ -1,14 +1,21 @@
 /*
- * RaSCaaS IDP — visual parity with frontend-app (kovr-ui)
- * Tokens from frontend-app/src/styles/tailwind.config.js
+ * RaSCaaS IDP — Otter / Kovr palette (blue + gold)
+ * Matches platform-testing/otter docs theme: #004595 / #d3c084
  */
 
 :root {
-  --kovr-primary: #9d3dff;
-  --kovr-primary-hover: #8f2af3;
-  --kovr-primary-soft: rgba(157, 61, 255, 0.1);
-  --kovr-secondary: #01bdac;
-  --kovr-info: #0f62fe;
+  --kovr-blue: #004595;
+  --kovr-blue-hover: #003570;
+  --kovr-blue-soft: rgba(0, 69, 149, 0.12);
+  --kovr-gold: #d3c084;
+  --kovr-gold-hover: #c4ad65;
+  --kovr-gold-soft: rgba(211, 192, 132, 0.18);
+
+  --kovr-primary: var(--kovr-gold);
+  --kovr-primary-hover: var(--kovr-gold-hover);
+  --kovr-primary-soft: var(--kovr-gold-soft);
+  --kovr-secondary: var(--kovr-gold);
+  --kovr-info: var(--kovr-blue);
 
   --kovr-base: #ffffff;
   --kovr-surface: #ffffff;
@@ -147,7 +154,7 @@ body.kovr-app.dark .kovr-appbar__logo--dark {
 .kovr-appbar__signout:hover {
   background: var(--kovr-primary-soft);
   color: var(--kovr-primary);
-  border-color: rgba(157, 61, 255, 0.35);
+  border-color: rgba(211, 192, 132, 0.45);
 }
 
 .kovr-appbar__signout:focus-visible {
@@ -378,7 +385,7 @@ body.kovr-app.drawer-collapsed .kovr-main {
 }
 
 .kovr-badge--primary {
-  border-color: rgba(157, 61, 255, 0.35);
+  border-color: rgba(211, 192, 132, 0.45);
   background: var(--kovr-primary-soft);
   color: var(--kovr-primary);
 }
@@ -410,13 +417,13 @@ body.kovr-app.drawer-collapsed .kovr-main {
 }
 
 .kovr-stepper__item.is-active {
-  color: var(--kovr-primary);
-  background: var(--kovr-primary-soft);
-  border-color: rgba(157, 61, 255, 0.25);
+  color: var(--kovr-blue);
+  background: var(--kovr-gold-soft);
+  border-color: rgba(211, 192, 132, 0.65);
 }
 
 .kovr-stepper__item.is-done {
-  color: var(--kovr-secondary);
+  color: var(--kovr-text-secondary);
 }
 
 /* —— Cards (MUI outlined) —— */
@@ -436,7 +443,7 @@ body.kovr-app.drawer-collapsed .kovr-main {
 
 .kovr-card:not(.kovr-card--locked):hover,
 .kovr-card.kovr-card--unlocked {
-  border-color: rgba(157, 61, 255, 0.35);
+  border-color: rgba(211, 192, 132, 0.45);
 }
 
 .kovr-card--locked {
@@ -541,7 +548,7 @@ body.kovr-app.drawer-collapsed .kovr-main {
 }
 
 .kovr-btn--primary {
-  color: #fff;
+  color: #1f2937;
   background: var(--kovr-primary);
   box-shadow: none;
 }
@@ -565,7 +572,7 @@ body.kovr-app.drawer-collapsed .kovr-main {
 }
 
 .kovr-panel--accent {
-  border-color: rgba(157, 61, 255, 0.35);
+  border-color: rgba(211, 192, 132, 0.45);
   background: var(--kovr-surface);
 }
 
@@ -660,6 +667,36 @@ body.kovr-app.drawer-collapsed .kovr-main {
 }
 
 /* —— History list —— */
+.kovr-tabs {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.kovr-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.75rem;
+  font-family: var(--kovr-font);
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--kovr-text-secondary);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.kovr-tab:hover {
+  color: var(--kovr-text);
+}
+
+.kovr-tab--active {
+  color: var(--kovr-primary);
+  border-bottom-color: var(--kovr-primary);
+}
+
 .kovr-history {
   margin: 0;
   padding: 0;
@@ -667,6 +704,41 @@ body.kovr-app.drawer-collapsed .kovr-main {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+}
+
+.kovr-history__group {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin: 0.75rem 0 0.15rem;
+  padding: 0.25rem 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--kovr-text-secondary);
+  border-bottom: 1px solid var(--kovr-border, rgba(0, 0, 0, 0.08));
+  list-style: none;
+}
+
+.kovr-history__group-label {
+  font-family: var(--kovr-mono);
+  color: var(--kovr-text-secondary);
+}
+
+.kovr-history__group-count {
+  flex-shrink: 0;
+  min-width: 1.25rem;
+  padding: 0.05rem 0.4rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  background: var(--kovr-divider, rgba(0, 0, 0, 0.06));
+  color: var(--kovr-text-secondary);
+}
+
+.kovr-history__group:first-child {
+  margin-top: 0;
 }
 
 .kovr-history__empty {
@@ -686,6 +758,11 @@ body.kovr-app.drawer-collapsed .kovr-main {
   background: var(--kovr-base);
   border: 1px solid var(--kovr-divider);
   border-radius: var(--kovr-radius);
+  cursor: pointer;
+}
+
+.kovr-history__item:hover {
+  border-color: var(--kovr-blue, #004595);
 }
 
 .kovr-history__body {
@@ -733,8 +810,14 @@ body.kovr-app.drawer-collapsed .kovr-main {
 }
 
 .kovr-history__status--syncing {
-  color: var(--kovr-info);
+  color: var(--kovr-info, #0f62fe);
   background: rgba(15, 98, 254, 0.08);
+}
+
+.kovr-history__status--inflight {
+  color: #004595;
+  background: rgba(0, 69, 149, 0.12);
+  border-color: rgba(0, 69, 149, 0.35);
 }
 
 .kovr-history__status--ready {
@@ -745,6 +828,11 @@ body.kovr-app.drawer-collapsed .kovr-main {
 .kovr-history__status--failed {
   color: var(--kovr-error);
   background: rgba(211, 47, 47, 0.08);
+}
+
+.kovr-history__status--deleting {
+  color: var(--kovr-warning);
+  background: rgba(237, 108, 2, 0.08);
 }
 
 /* —— Toast —— */

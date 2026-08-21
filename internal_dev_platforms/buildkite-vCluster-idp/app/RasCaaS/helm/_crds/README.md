@@ -77,6 +77,7 @@ cd platform-testing/RasCaaS
 python3 scripts/render-plain-secrets.py   # or edit helm/_crds/secrets/plain-secrets.yaml
 
 kubectl apply -f helm/_crds/namespace.yaml
+kubectl apply -f helm/_crds/vcluster/namespace.yaml   # host ns for tmp-* vClusters (not Helm-owned)
 kubectl apply -f helm/_crds/service-accounts/    # plain mode: IRSA optional
 kubectl apply -f helm/_crds/secrets/plain-secrets.yaml
 ```
@@ -101,6 +102,8 @@ kubectl get gateway rascaas-gateway -n rascaas
 Point DNS `rascaas.qa.kovr.ai` at the ALB address in `status.addresses`.
 
 **Other hosts:** use `rascaas-gateway-https.template.yaml` with `sed` (documented in `gateway/README.md`).
+
+**Post-install ALB check (required for Failed tab / live logs):** HTTPRoute includes `/api/runner`, but the ALB sometimes never gets that listener rule. Catch-all `/*` then sends GHA callbacks to oauth2-proxy → fake 200, SQLite never gets `phase=failed`. Verify + `create-rule` steps: [`gateway/README.md`](gateway/README.md) § Required ALB listener rules.
 
 ---
 

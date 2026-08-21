@@ -19,10 +19,16 @@ _PEM_BLOCK_RE = re.compile(
 
 
 def normalize_private_key(pem: str) -> str:
-    """Accept .env single-line PEM (no newlines) and standard multi-line PEM."""
+    """Accept .env single-line PEM (no newlines) and standard multi-line PEM.
+
+    Also heals a common Secrets Manager paste bug: four leading dashes on the
+    BEGIN/END fences (``----BEGIN``) instead of the PEM-required five.
+    """
     if not pem or not pem.strip():
         return pem
     text = pem.strip().strip('"').strip("'").replace("\\n", "\n")
+    # Heal ----BEGIN / ----END (4 dashes) → -----BEGIN / -----END (5 dashes).
+    text = re.sub(r"(?<!-)----(BEGIN|END) ", r"-----\1 ", text)
     if "\n" in text and text.count("\n") >= 2:
         return text if text.endswith("\n") else text + "\n"
     match = _PEM_BLOCK_RE.search(text.replace("\n", ""))
@@ -164,6 +170,21 @@ class GitHubClient:
         )
         if r.status_code == 204:
             return {"triggered": True, "workflow_file": wf}
+        # Surface GitHub's explanation (422 body: "Unexpected inputs provided",
+        # "No ref found for: <branch>", etc.) — raise_for_status hides it.
+        if r.status_code >= 400:
+            detail = ""
+            try:
+                body = r.json()
+                detail = body.get("message") or ""
+                errs = body.get("errors")
+                if errs:
+                    detail = f"{detail}: {errs}"
+            except Exception:
+                detail = (r.text or "").strip()
+            raise RuntimeError(
+                f"dispatch {wf} on {repo}@{branch} failed ({r.status_code}): {detail}"
+            )
         r.raise_for_status()
         return r.json()
 

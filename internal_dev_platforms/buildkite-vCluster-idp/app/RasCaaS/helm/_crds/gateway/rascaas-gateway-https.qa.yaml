@@ -1,17 +1,16 @@
-# QA — HTTPS listener for rascaas-gateway (rascaas.qa.kovr.ai)
+# QA — HTTPS listener for rascaas-gateway (rascaas.qa.kovrai.com)
 # Account 650251729525, us-west-2.
 #
 # Prerequisite: kubectl apply -f rascaas-gateway-base.yaml
 #
-# 1. Set IAM cert ARN (must cover rascaas.qa.kovr.ai):
-#    aws iam list-server-certificates --profile qa-kovr
-#    # or upload ACM cert: aws iam upload-server-certificate ...
+# Cert: ACM *.qa.kovrai.com
+#   arn:aws:acm:us-west-2:650251729525:certificate/435ee5c0-a0e5-4edc-87b7-6f9248f22e45
 #
-# 2. Replace REPLACE_WITH_IAM_SERVER_CERT_ARN below, then:
-#    kubectl apply -f helm/_crds/gateway/rascaas-gateway-https.qa.yaml
+# Attach LBC via Gateway.spec.infrastructure.parametersRef (not annotation).
+# See AWS LBC docs: https://kubernetes-sigs.github.io/aws-load-balancer-controller/latest/guide/gateway/customization/
 #
-# 3. DNS: rascaas.qa.kovr.ai → ALB hostname from:
-#    kubectl get gateway rascaas-gateway -n rascaas -o jsonpath='{.status.addresses[0].value}'
+# DNS: rascaas.qa.kovrai.com → ALB hostname from:
+#   kubectl get gateway rascaas-gateway -n rascaas -o jsonpath='{.status.addresses[0].value}'
 ---
 apiVersion: gateway.k8s.aws/v1beta1
 kind: LoadBalancerConfiguration
@@ -25,17 +24,20 @@ spec:
     name: rascaas-default-tgc
   listenerConfigurations:
     - protocolPort: HTTPS:443
-      defaultCertificate: REPLACE_WITH_IAM_SERVER_CERT_ARN
+      defaultCertificate: arn:aws:acm:us-west-2:650251729525:certificate/435ee5c0-a0e5-4edc-87b7-6f9248f22e45
 ---
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
   name: rascaas-gateway
   namespace: rascaas
-  annotations:
-    gateway.k8s.aws/load-balancer-configuration: rascaas-lbc-config
 spec:
   gatewayClassName: alb
+  infrastructure:
+    parametersRef:
+      group: gateway.k8s.aws
+      kind: LoadBalancerConfiguration
+      name: rascaas-lbc-config
   listeners:
     - name: http
       protocol: HTTP
@@ -44,7 +46,7 @@ spec:
         namespaces:
           from: Same
     - name: https
-      hostname: rascaas.qa.kovr.ai
+      hostname: rascaas.qa.kovrai.com
       protocol: HTTPS
       port: 443
       allowedRoutes:

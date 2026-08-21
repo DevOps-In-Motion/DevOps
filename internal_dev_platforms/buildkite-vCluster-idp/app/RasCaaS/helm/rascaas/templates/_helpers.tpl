@@ -101,6 +101,27 @@ Service account for oauth2-proxy pods.
 {{- end }}
 
 {{/*
+Service account for UAT temp ECR cleanup CronJob.
+*/}}
+{{- define "rascaas.uatTempEcrCleanup.serviceAccountName" -}}
+{{- if .Values.uatTempEcrCleanup.serviceAccountName }}
+{{- .Values.uatTempEcrCleanup.serviceAccountName }}
+{{- else }}
+{{- printf "%s-uat-temp-ecr-cleanup" .Release.Name | trunc 63 | trimSuffix "-" }}
+{{- end }}
+{{- end }}
+
+{{/*
+Dedicated UAT temp ECR cleanup image (required when enabled — never the IDP image).
+*/}}
+{{- define "rascaas.uatTempEcrCleanup.image" -}}
+{{- if not .Values.uatTempEcrCleanup.image }}
+{{- fail "uatTempEcrCleanup.image is required when enabled (use rascaas-uat-ecr-cleanup, not the RaSCaaS IDP image)" }}
+{{- end }}
+{{- .Values.uatTempEcrCleanup.image }}
+{{- end }}
+
+{{/*
 Helm release namespace.
 */}}
 {{- define "rascaas.namespace" -}}
@@ -214,9 +235,28 @@ Validate secrets.mode and CSI prerequisites.
 {{- if not (or (eq $mode "csi-driver") (eq $mode "plain")) -}}
 {{- fail (printf "secrets.mode must be \"csi-driver\" or \"plain\", got %q" $mode) -}}
 {{- end -}}
-{{- if and (eq $mode "csi-driver") (not .Values.secrets.secretProviderClass) -}}
-{{- fail "secrets.secretProviderClass is required when secrets.mode is csi-driver" -}}
+{{- if eq $mode "csi-driver" -}}
+{{- if not (include "rascaas.secrets.fastapiSpc" .) -}}
+{{- fail "secrets.fastapiSecretProviderClass (or secrets.secretProviderClass) is required when secrets.mode is csi-driver" -}}
 {{- end -}}
+{{- if not (include "rascaas.secrets.oauth2proxySpc" .) -}}
+{{- fail "secrets.oauth2proxySecretProviderClass (or secrets.secretProviderClass) is required when secrets.mode is csi-driver" -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+FastAPI SecretProviderClass name (per-app preferred; shared secretProviderClass as fallback).
+*/}}
+{{- define "rascaas.secrets.fastapiSpc" -}}
+{{- .Values.secrets.fastapiSecretProviderClass | default .Values.secrets.secretProviderClass | default "" -}}
+{{- end -}}
+
+{{/*
+oauth2-proxy SecretProviderClass name.
+*/}}
+{{- define "rascaas.secrets.oauth2proxySpc" -}}
+{{- .Values.secrets.oauth2proxySecretProviderClass | default .Values.secrets.secretProviderClass | default "" -}}
 {{- end -}}
 
 {{/*
@@ -229,9 +269,67 @@ true
 {{- end -}}
 
 {{/*
-CSI volume on the pod spec (secrets.mode=csi-driver only).
+SQLite data PVC name (must stay in lockstep with templates/pvc.yaml).
+*/}}
+{{- define "rascaas.persistence.pvcName" -}}
+{{- .Values.persistence.claimName | default (printf "%s-data" .Values.fastapi.name) -}}
+{{- end -}}
+
+{{/*
+Optional static PV name when persistence.pv.create is true.
+*/}}
+{{- define "rascaas.persistence.pvName" -}}
+{{- .Values.persistence.pv.name | default (printf "%s-data-pv" .Release.Name) -}}
+{{- end -}}
+
+{{/*
+Pod volumes: CSI (optional) + SQLite PVC when persistence.enabled (FastAPI only).
 */}}
 {{- define "rascaas.pod.csiVolumes" -}}
+{{- $csi := eq (include "rascaas.secrets.csiEnabled" .) "true" }}
+{{- $pvc := .Values.persistence.enabled }}
+{{- if or $csi $pvc }}
+      volumes:
+{{- if $csi }}
+        - name: secrets-store
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: {{ include "rascaas.secrets.fastapiSpc" . | quote }}
+{{- end }}
+{{- if $pvc }}
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ include "rascaas.persistence.pvcName" . }}
+{{- end }}
+{{- end }}
+{{- end -}}
+
+{{/*
+CSI + data volumeMounts (FastAPI).
+*/}}
+{{- define "rascaas.container.csiVolumeMounts" -}}
+{{- $csi := eq (include "rascaas.secrets.csiEnabled" .) "true" }}
+{{- $pvc := .Values.persistence.enabled }}
+{{- if or $csi $pvc }}
+          volumeMounts:
+{{- if $csi }}
+            - name: secrets-store
+              mountPath: {{ .Values.secrets.mountPath | default "/mnt/secrets-store" }}
+              readOnly: true
+{{- end }}
+{{- if $pvc }}
+            - name: data
+              mountPath: {{ .Values.persistence.mountPath | default "/data" }}
+{{- end }}
+{{- end }}
+{{- end -}}
+
+{{/*
+oauth2-proxy: CSI secrets volume only — never the FastAPI SQLite PVC.
+*/}}
+{{- define "rascaas.pod.oauth2Volumes" -}}
 {{- if eq (include "rascaas.secrets.csiEnabled" .) "true" }}
       volumes:
         - name: secrets-store
@@ -239,14 +337,11 @@ CSI volume on the pod spec (secrets.mode=csi-driver only).
             driver: secrets-store.csi.k8s.io
             readOnly: true
             volumeAttributes:
-              secretProviderClass: {{ .Values.secrets.secretProviderClass }}
+              secretProviderClass: {{ include "rascaas.secrets.oauth2proxySpc" . | quote }}
 {{- end }}
 {{- end -}}
 
-{{/*
-CSI volumeMount on a container (secrets.mode=csi-driver only).
-*/}}
-{{- define "rascaas.container.csiVolumeMounts" -}}
+{{- define "rascaas.container.oauth2VolumeMounts" -}}
 {{- if eq (include "rascaas.secrets.csiEnabled" .) "true" }}
           volumeMounts:
             - name: secrets-store

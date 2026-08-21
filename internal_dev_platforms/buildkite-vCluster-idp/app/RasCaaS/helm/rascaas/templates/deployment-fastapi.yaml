@@ -8,7 +8,18 @@ metadata:
   labels:
     {{- include "rascaas.fastapi.labels" . | nindent 4 }}
 spec:
-  replicas: {{ $api.replicas | default 1 }}
+  replicas: {{ if .Values.persistence.enabled }}1{{ else }}{{ $api.replicas | default 1 }}{{ end }}
+  # EBS gp3 is RWO — only one node may attach the volume.
+  # Recreate waits until the old pod is fully gone (volume detached) before creating the
+  # replacement. RollingUpdate maxSurge:0 still creates the new pod while the old one is
+  # Terminating → Multi-Attach when the scheduler picks another node.
+  # If helm upgrade rejects the strategy (leftover rollingUpdate), one-time:
+  #   kubectl patch deploy/{{ $api.name }}-deployment -n {{ .Release.Namespace }} --type strategic \
+  #     -p '{"spec":{"strategy":{"$retainKeys":["type"],"type":"Recreate"}}}'
+  {{- if .Values.persistence.enabled }}
+  strategy:
+    type: Recreate
+  {{- end }}
   selector:
     matchLabels:
       {{- include "rascaas.fastapi.selectorLabels" . | nindent 6 }}
@@ -20,6 +31,13 @@ spec:
       {{- include "rascaas.imagePullSecrets" . | nindent 6 }}
       serviceAccountName: {{ include "rascaas.fastapi.serviceAccountName" . }}
       enableServiceLinks: false
+      # Distroless nonroot (65532); EBS PVC is root-owned without fsGroup → sqlite "unable to open database file"
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        fsGroup: 65532
+        fsGroupChangePolicy: OnRootMismatch
 {{- if $api.tolerations }}
       tolerations:
 {{ toYaml $api.tolerations | indent 8 }}
@@ -38,6 +56,10 @@ spec:
               containerPort: {{ $api.port }}
 {{- include "rascaas.container.csiVolumeMounts" . }}
           env:
+            - name: SQLITE_PATH
+              value: {{ .Values.persistence.sqlitePath | default "/data/rascaas.db" | quote }}
+            - name: VCLUSTER_HOST_NAMESPACE
+              value: {{ .Values.hostCluster.vclusterNamespace | default "vcluster" | quote }}
 {{- range $k, $v := $api.env }}
 {{- if and $.Values.keycloak.enabled (has $k (list "OIDC_ISSUER_URL" "OIDC_CLIENT_ID" "OIDC_JWKS_URL" "TRUST_OAUTH2_PROXY_IDENTITY")) }}
 {{- else }}
@@ -61,6 +83,19 @@ spec:
                 secretKeyRef:
                   name: {{ $api.secretName }}
                   key: {{ $secretKey }}
+                  {{- if has $envName ($api.secretEnvOptional | default list) }}
+                  optional: true
+                  {{- end }}
+{{- end }}
+{{- range $envName, $ref := ($api.extraSecretEnv | default dict) }}
+            - name: {{ $envName }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $ref.name | quote }}
+                  key: {{ $ref.key | quote }}
+                  {{- if $ref.optional }}
+                  optional: true
+                  {{- end }}
 {{- end }}
           {{- with $api.resources }}
           resources:

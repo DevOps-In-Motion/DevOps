@@ -1,0 +1,935 @@
+# Platform-only UAT deploy — all builds and Helm deploys run in this repo.
+# GitHub repo name: platform (local clone path: platform-testing/).
+# RaSCaaS dispatches workflow_dispatch here (GITHUB_DISPATCH_REPO=kovr-ai/platform)
+# with variance_repo = selected service. Workflow ref = GITHUB_DISPATCH_REF (default main).
+# Trigger: workflow_dispatch only (webhook from RaSCaaS) — never on push.
+# No per-service-repo workflows — limits blast radius and keeps secrets/roles in one place.
+# See workflows/rascaas/README.md
+
+name: UAT — build variance + deploy stack
+
+# One deploy at a time per env (tmp-<reponame>-<branch> = ns + vCluster name)
+concurrency:
+  group: rascaas-uat-${{ inputs.vcluster_name || format('{0}-{1}', inputs.variance_repo, inputs.branch) }}
+  cancel-in-progress: false
+
+on:
+  workflow_dispatch:
+    inputs:
+      variance_repo:
+        description: "GitHub repo (owner/name) to build — the service under test"
+        required: true
+        type: string
+      branch:
+        description: "Branch to build from the variance repo (also drives tmp-<reponame>-<branch> ns/name)"
+        required: true
+        type: string
+        default: main
+      ttl:
+        description: "Environment lifetime: 3d, 5d, or 7d. Schedules a host-cluster Job to delete the vCluster after this duration."
+        required: false
+        type: string
+        default: "3d"
+      vcluster_name:
+        description: "vCluster name (= host namespace). Default tmp-<reponame>-<branch>"
+        required: false
+        type: string
+        default: ""
+      vcluster_host_namespace:
+        description: >-
+          Host namespace for the vCluster control plane. Leave default "vcluster"
+          to auto-use tmp-<reponame>-<branch> (one virtual cluster per namespace —
+          required by vCluster ≥0.25). Do not share a namespace across envs.
+        required: false
+        type: string
+        default: vcluster
+      cleanup_job_namespace:
+        description: "Host cluster namespace for TTL cleanup Jobs"
+        required: false
+        type: string
+        default: uat-cleanup
+      reason:
+        description: "Reason for testing"
+        required: false
+        type: string
+        default: ""
+      linear_ticket:
+        description: "Linear ticket URL"
+        required: false
+        type: string
+        default: ""
+      helm_charts_repo:
+        description: "GitHub repo (owner/name) for the Kovr umbrella Helm charts"
+        required: false
+        type: string
+        default: kovr-ai/helm-charts
+      helm_charts_branch:
+        description: "Branch of helm-charts to deploy"
+        required: false
+        type: string
+        default: create-kovr-parent-chart
+      baseline_values_file:
+        description: "Baseline Helm values relative to helm-charts checkout (empty = <chart>/values.yaml)"
+        required: false
+        type: string
+        default: ""
+      helm_chart_path:
+        description: "Umbrella chart path relative to helm-charts checkout"
+        required: false
+        type: string
+        default: kovr
+      helm_release:
+        description: "Helm release name"
+        required: false
+        type: string
+        default: kovr
+      helm_namespace:
+        description: "Target namespace inside the vCluster"
+        required: false
+        type: string
+        default: kovr
+      rascaas_deployment_id:
+        description: "RaSCaaS deployment id (for progress callbacks)"
+        required: false
+        type: string
+        default: ""
+      rascaas_callback_url:
+        description: "RaSCaaS POST /api/runner/events URL"
+        required: false
+        type: string
+        default: ""
+      rascaas_callback_token:
+        description: "Bearer token for RaSCaaS runner callback"
+        required: false
+        type: string
+        default: ""
+      rascaas_trace_id:
+        description: "RaSCaaS deploy-scoped trace id (correlates UI → GHA → callbacks)"
+        required: false
+        type: string
+        default: ""
+
+env:
+  ECR_REGISTRY: ${{ vars.ECR_REGISTRY }}
+  # Single temp ECR repo for UAT variance digests (14-day CronJob GC on host).
+  ECR_UAT_TEMP_REPO: ${{ vars.ECR_UAT_TEMP_REPO || 'kovr-uat-temp' }}
+  AWS_REGION: ${{ vars.AWS_REGION || 'us-west-2' }}
+  # Same host cluster as service deploy-*-eks.yml (central-workflows / DevopsCICDRole).
+  EKS_CLUSTER_NAME: ${{ vars.EKS_CLUSTER_NAME || 'qa-kovr-app-cluster' }}
+  STACK_CATALOG: workflows/rascaas/stack-services.yaml
+  RENDER_SCRIPT: workflows/rascaas/render_uat_overlay.py
+  PARSE_TTL_SCRIPT: workflows/rascaas/parse_ttl.py
+  SANITIZE_VC_SCRIPT: workflows/rascaas/sanitize_vcluster_name.py
+  SANITIZE_TAG_SCRIPT: workflows/rascaas/sanitize_image_tag.py
+  CLEANUP_JOB_SCRIPT: workflows/rascaas/render_vcluster_cleanup_job.py
+  ROUTE53_SCRIPT: workflows/rascaas/uat_route53.py
+  NOTIFY_SCRIPT: workflows/rascaas/rascaas_notify.py
+  VCLUSTER_CLI_VERSION: v0.22.1
+  # Ephemeral DNS: {vcluster}.uat.kovrai.com → shared QA ALB (override via repo vars).
+  UAT_DNS_ZONE: ${{ vars.UAT_DNS_ZONE || 'uat.kovrai.com' }}
+  UAT_DNS_ZONE_ID: ${{ vars.UAT_DNS_ZONE_ID || 'Z0358955IXI81VFP9KE9' }}
+  UAT_ALB_DNS: ${{ vars.UAT_ALB_DNS || 'qa-kovr-app-eks-alb-771923398.us-west-2.elb.amazonaws.com' }}
+  UAT_ALB_HOSTED_ZONE_ID: ${{ vars.UAT_ALB_HOSTED_ZONE_ID || 'Z1H1FL5HABSF5' }}
+  RASCAAS_DEPLOYMENT_ID: ${{ inputs.rascaas_deployment_id }}
+  RASCAAS_CALLBACK_URL: ${{ inputs.rascaas_callback_url }}
+  RASCAAS_CALLBACK_TOKEN: ${{ inputs.rascaas_callback_token }}
+  RASCAAS_TRACE_ID: ${{ inputs.rascaas_trace_id }}
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  resolve:
+    name: Resolve variance service
+    runs-on: ubuntu-latest
+    outputs:
+      repo_name: ${{ steps.meta.outputs.repo_name }}
+      helm_key: ${{ steps.meta.outputs.helm_key }}
+      image_name: ${{ steps.meta.outputs.image_name }}
+      dockerfile: ${{ steps.meta.outputs.dockerfile }}
+      context: ${{ steps.meta.outputs.context }}
+      build_secrets_json: ${{ steps.meta.outputs.build_secrets_json }}
+      vcluster_name: ${{ steps.vcname.outputs.name }}
+      host_namespace: ${{ steps.vcname.outputs.host_namespace }}
+      public_hostname: ${{ steps.vcname.outputs.public_hostname }}
+      helm_charts_branch: ${{ steps.helmref.outputs.branch }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Mask RaSCaaS callback token
+        if: inputs.rascaas_callback_token != ''
+        run: echo "::add-mask::${{ inputs.rascaas_callback_token }}"
+
+      - name: Notify RaSCaaS — resolve started
+        run: |
+          python3 "${{ env.NOTIFY_SCRIPT }}" \
+            --phase provisioning \
+            --line "Resolve: starting (variance=${{ inputs.variance_repo }} @ ${{ inputs.branch }})" \
+            --run-id "${{ github.run_id }}" \
+            --run-url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+      - name: Resolve helm-charts branch
+        id: helmref
+        run: |
+          set -euo pipefail
+          # Parent umbrella chart lives on create-kovr-parent-chart (not the variance service branch).
+          BRANCH="${{ inputs.helm_charts_branch }}"
+          if [ -z "$BRANCH" ]; then
+            BRANCH="create-kovr-parent-chart"
+          fi
+          echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
+          echo "helm-charts: ${{ inputs.helm_charts_repo }} @ $BRANCH" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Load stack catalog
+        id: meta
+        run: |
+          pip install pyyaml -q
+          python3 <<'PY'
+          import json, os, sys, yaml
+          from pathlib import Path
+
+          catalog_path = Path(os.environ["STACK_CATALOG"])
+          data = yaml.safe_load(catalog_path.read_text())
+          services = data.get("services") or {}
+
+          full = os.environ["VARIANCE_REPO"]
+          repo_name = full.split("/")[-1]
+          if repo_name not in services:
+              print(f"Unknown repo: {repo_name}", file=sys.stderr)
+              sys.exit(1)
+
+          svc = services[repo_name]
+          secrets = svc.get("build_secrets") or []
+
+          out = os.environ["GITHUB_OUTPUT"]
+          def emit(k, v):
+              with open(out, "a") as f:
+                  f.write(f"{k}={v}\n")
+
+          emit("repo_name", repo_name)
+          emit("helm_key", svc["helm_key"])
+          emit("image_name", svc["image"])
+          emit("dockerfile", svc.get("dockerfile", "Dockerfile"))
+          emit("context", svc.get("context", "."))
+          emit("build_secrets_json", json.dumps(secrets))
+          PY
+        env:
+          VARIANCE_REPO: ${{ inputs.variance_repo }}
+
+      - name: Resolve vCluster name
+        id: vcname
+        run: |
+          set -euo pipefail
+          NAME="${{ inputs.vcluster_name }}"
+          if [ -z "$NAME" ]; then
+            NAME=$(python3 "${{ env.SANITIZE_VC_SCRIPT }}" \
+              --repo "${{ inputs.variance_repo }}" \
+              "${{ inputs.branch }}")
+          fi
+          # One vCluster per namespace. Default identity: tmp-<reponame>-<branch>
+          # for BOTH the Helm release name and the host namespace.
+          REQ_NS="${{ inputs.vcluster_host_namespace }}"
+          if [ -z "$REQ_NS" ] || [ "$REQ_NS" = "vcluster" ]; then
+            HOST_NS="$NAME"
+          else
+            # Explicit override must still be 1:1 with this env — do not reuse a shared pool.
+            HOST_NS="$REQ_NS"
+          fi
+          echo "name=$NAME" >> "$GITHUB_OUTPUT"
+          echo "host_namespace=$HOST_NS" >> "$GITHUB_OUTPUT"
+          HOSTNAME=$(python3 "${{ env.ROUTE53_SCRIPT }}" hostname --vcluster-name "$NAME" --zone-name "${{ env.UAT_DNS_ZONE }}")
+          echo "public_hostname=$HOSTNAME" >> "$GITHUB_OUTPUT"
+          echo "vCluster/ns: $NAME (host namespace: $HOST_NS)" >> "$GITHUB_STEP_SUMMARY"
+          echo "Public hostname: https://$HOSTNAME" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Notify RaSCaaS — resolve done
+        run: |
+          TTL="${{ inputs.ttl }}"
+          TTL="${TTL:-3d}"
+          python3 "${{ env.NOTIFY_SCRIPT }}" \
+            --phase provisioning \
+            --line "Resolve: ok (vcluster=${{ steps.vcname.outputs.name }}, helm_key=${{ steps.meta.outputs.helm_key }})" \
+            --line "Resolve: TTL=${TTL} helm-charts @ ${{ steps.helmref.outputs.branch }}"
+
+      - name: Notify RaSCaaS — resolve failed
+        if: failure()
+        run: |
+          python3 "${{ env.NOTIFY_SCRIPT }}" \
+            --phase failed \
+            --level error \
+            --line "Resolve: failed"
+
+  build-variance:
+    name: Build & push ${{ needs.resolve.outputs.repo_name }}
+    needs: resolve
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    outputs:
+      image_tag: ${{ steps.tag.outputs.image_tag }}
+      variance_image: ${{ steps.tag.outputs.variance_image }}
+    steps:
+      - name: Checkout platform (tag sanitize scripts)
+        uses: actions/checkout@v4
+
+      - name: Notify RaSCaaS — build started
+        run: |
+          python3 "${{ env.NOTIFY_SCRIPT }}" \
+            --phase syncing \
+            --line "Build: starting ${{ needs.resolve.outputs.repo_name }} @ ${{ inputs.branch }}" \
+            --run-id "${{ github.run_id }}" \
+            --run-url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+      # Private sibling repos: default GITHUB_TOKEN cannot checkout kovr-ai/* from platform
+      # ("Repository not found"). Reuse org Import App (same secrets as twin-repo import).
+      - name: GitHub App token (variance repo)
+        id: variance-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.IMPORT_APP_ID }}
+          private-key: ${{ secrets.IMPORT_APP_PRIVATE_KEY }}
+          owner: kovr-ai
+          repositories: ${{ needs.resolve.outputs.repo_name }}
+
+      - name: Checkout variance repo
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ inputs.variance_repo }}
+          ref: ${{ inputs.branch }}
+          path: variance-src
+          token: ${{ steps.variance-token.outputs.token }}
+
+      - name: Notify RaSCaaS — variance checked out
+        run: |
+          python3 "${{ env.NOTIFY_SCRIPT }}" \
+            --phase syncing \
+            --line "Build: checked out ${{ inputs.variance_repo }} @ ${{ inputs.branch }}"
+
+      - name: Configure AWS credentials (ECR push)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Ensure temp ECR repository
+        run: |
+          set -euo pipefail
+          REPO="${{ env.ECR_UAT_TEMP_REPO }}"
+          if ! aws ecr describe-repositories --repository-names "$REPO" --region "$AWS_REGION" >/dev/null 2>&1; then
+            aws ecr create-repository --repository-name "$REPO" --region "$AWS_REGION"
+            echo "Created ECR repository: $REPO"
+          else
+            echo "ECR repository exists: $REPO"
+          fi
+
+      - name: Set image tag from variance branch
+        id: tag
+        working-directory: variance-src
+        run: |
+          set -euo pipefail
+          SHA=$(git rev-parse --short=12 HEAD)
+          BRANCH_SLUG=$(python3 "${{ github.workspace }}/${{ env.SANITIZE_TAG_SCRIPT }}" "${{ inputs.branch }}")
+          # ras-<catalog-image>-<branch>[-sha] — unique per commit, identifiable by branch
+          IMAGE_TAG="ras-${{ needs.resolve.outputs.image_name }}-${BRANCH_SLUG}-${SHA}"
+          # Docker/ECR tag max 128 chars
+          if [ "${#IMAGE_TAG}" -gt 128 ]; then
+            IMAGE_TAG="${IMAGE_TAG:0:128}"
+            IMAGE_TAG="${IMAGE_TAG%-}"
+          fi
+          VARIANCE_IMAGE="${{ env.ECR_REGISTRY }}/${{ env.ECR_UAT_TEMP_REPO }}:${IMAGE_TAG}"
+          echo "tag=${IMAGE_TAG}" >> "$GITHUB_OUTPUT"
+          echo "image_tag=${IMAGE_TAG}" >> "$GITHUB_OUTPUT"
+          echo "variance_image=${VARIANCE_IMAGE}" >> "$GITHUB_OUTPUT"
+          echo "branch_slug=${BRANCH_SLUG}" >> "$GITHUB_OUTPUT"
+
+      # Tag includes commit SHA — same commit ⇒ same tag. Skip rebuild if already in temp ECR.
+      - name: Check if image already in ECR
+        id: ecr_image
+        run: |
+          set -euo pipefail
+          TAG="${{ steps.tag.outputs.image_tag }}"
+          REPO="${{ env.ECR_UAT_TEMP_REPO }}"
+          if aws ecr describe-images \
+              --repository-name "$REPO" \
+              --image-ids "imageTag=${TAG}" \
+              --region "$AWS_REGION" \
+              >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "Reusing existing ECR image: ${{ steps.tag.outputs.variance_image }}"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "No ECR image for tag ${TAG} — will build linux/amd64"
+          fi
+
+      - name: Notify RaSCaaS — reusing existing image
+        if: steps.ecr_image.outputs.exists == 'true'
+        run: |
+          python3 "${{ env.NOTIFY_SCRIPT }}" \
+            --phase syncing \
+            --line "Build: skipped — image already in ECR ${{ steps.tag.outputs.variance_image }}"
+
+      - name: Notify RaSCaaS — image tag ready
+        if: steps.ecr_image.outputs.exists != 'true'
+        run: |
+          python3 "${{ env.NOTIFY_SCRIPT }}" \
+            --phase syncing \
+            --line "Build: image tag ${{ steps.tag.outputs.image_tag }} (linux/amd64)"
+
+      # Same as service deploy-*-eks / build-cve-fix: private base images live on cgr.dev/kovr.ai
+      - name: Login to Chainguard (cgr.dev)
+        if: steps.ecr_image.outputs.exists != 'true'
+        env:
+          CHAINGUARD_SECRET_ID: global/Chainguard/Credentials
+        run: |
+          set -euo pipefail
+          CREDS=$(aws secretsmanager get-secret-value \
+            --secret-id "$CHAINGUARD_SECRET_ID" \
+            --query SecretString --output text)
+          USERNAME=$(echo "$CREDS" | jq -r '.username')
+          PASSWORD=$(echo "$CREDS" | jq -r '.password')
+          echo "::add-mask::$USERNAME"
+          echo "::add-mask::$PASSWORD"
+          # Runner may use podman (build step) or docker — login both when present.
+          if command -v podman >/dev/null 2>&1; then
+            echo "$PASSWORD" | podman login cgr.dev -u "$USERNAME" --password-stdin
+          fi
+          if command -v docker >/dev/null 2>&1; then
+            echo "$PASSWORD" | docker login cgr.dev -u "$USERNAME" --password-stdin
+          fi
+
+      - name: Login to Amazon ECR
+        if: steps.ecr_image.outputs.exists != 'true'
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Resolve NPM token (BFF)
+        id: npm
+        if: steps.ecr_image.outputs.exists != 'true' && contains(needs.resolve.outputs.build_secrets_json, 'npm_token')
+        run: |
+          set -euo pipefail
+          # Prefer shared SM token (same as BFF deploy workflows); fall back to Actions secret.
+          TOKEN=""
+          if CREDS=$(aws secretsmanager get-secret-value \
+              --secret-id global/github/npm-token \
+              --query SecretString --output text 2>/dev/null); then
+            TOKEN=$(echo "$CREDS" | jq -r '.token // empty')
+          fi
+          if [ -z "$TOKEN" ]; then
+            TOKEN="${{ secrets.NPM_TOKEN }}"
+          fi
+          if [ -z "$TOKEN" ]; then
+            echo "NPM token missing: set SM global/github/npm-token or secret NPM_TOKEN" >&2
+            exit 1
+          fi
+          echo "::add-mask::$TOKEN"
+          echo "token=$TOKEN" >> "$GITHUB_OUTPUT"
+          echo "✓ NPM token resolved (${#TOKEN} chars)"
+
+      - name: Notify RaSCaaS — docker build starting
+        if: steps.ecr_image.outputs.exists != 'true'
+        run: |
+          python3 "${{ env.NOTIFY_SCRIPT }}" \
+            --phase syncing \
+            --line "Build: docker build+push starting (${{ needs.resolve.outputs.dockerfile }})"
+
+      - name: Build & push image
+        if: steps.ecr_image.outputs.exists != 'true'
+        working-directory: variance-src/${{ needs.resolve.outputs.context }}
+        env:
+          IMAGE: ${{ steps.tag.outputs.variance_image }}
+          HUSKY: 0
+        run: |
+          set -euo pipefail
+          BUILD_ARGS=()
+          SECRETS_JSON='${{ needs.resolve.outputs.build_secrets_json }}'
+          if echo "$SECRETS_JSON" | grep -q npm_token; then
+            if [ -z "${{ steps.npm.outputs.token }}" ]; then
+              echo "ERROR: npm_token required but steps.npm.outputs.token is empty" >&2
+              exit 1
+            fi
+            echo "${{ steps.npm.outputs.token }}" > /tmp/npm_token
+            BUILD_ARGS+=(--secret=id=npm_token,src=/tmp/npm_token)
+            # Also pass as build arg for Dockerfiles that expect NPM_TOKEN env/arg
+            # (e.g., yarn-based builds like frontend-app).
+            # NOTE: Service repos (bff-service-backend, frontend-app) have their own deploy workflows
+            # in central-workflows/deploy-eks-reusable.yml. The same NPM token handling pattern
+            # (secret mount + build arg) should be applied there for consistency.
+            BUILD_ARGS+=(--build-arg "NPM_TOKEN=${{ steps.npm.outputs.token }}")
+            echo "✓ NPM token passed to build (secret mount + build arg)"
+          fi
+          # Kovr service Dockerfiles use BuildKit-only features: RUN --mount=type=secret
+          # AND Dockerfile heredocs (RUN ... <<'EOF'). Build with Docker BuildKit.
+          # podman/buildah on the runner does NOT honor heredocs and fails reading the
+          # heredoc body as an instruction: Error building at STEP "SET": Unknown instruction "SET".
+          # (ubuntu-latest ships docker+BuildKit; podman fallback kept for other runners.)
+          if command -v docker >/dev/null 2>&1; then
+            DOCKER_BUILDKIT=1 docker build --platform linux/amd64 "${BUILD_ARGS[@]}" \
+              -f "${{ needs.resolve.outputs.dockerfile }}" \
+              -t "$IMAGE" \
+              .
+            docker push "$IMAGE"
+          else
+            # Fallback only — requires buildah >= 1.25 for Dockerfile heredoc support.
+            podman build --platform linux/amd64 "${BUILD_ARGS[@]}" \
+              -f "${{ needs.resolve.outputs.dockerfile }}" \
+              -t "$IMAGE" \
+              .
+            podman push "$IMAGE"
+          fi
+
+      - name: Build summary
+        run: |
+          {
+            echo "### Variance image"
+            echo "- Repo: \`${{ inputs.variance_repo }}\` @ \`${{ inputs.branch }}\`"
+            echo "- Helm key: \`${{ needs.resolve.outputs.helm_key }}\`"
+            echo "- Temp ECR: \`${{ env.ECR_UAT_TEMP_REPO }}\`"
+            echo "- Image: \`${{ steps.tag.outputs.variance_image }}\`"
+            if [ "${{ steps.ecr_image.outputs.exists }}" = "true" ]; then
+              echo "- Build: **skipped** (tag already in ECR)"
+            else
+              echo "- Build: built + pushed (linux/amd64)"
+            fi
+            echo "- vCluster: \`${{ needs.resolve.outputs.vcluster_name }}\`"
+            echo "- helm-charts: \`${{ inputs.helm_charts_repo }}\` @ \`${{ needs.resolve.outputs.helm_charts_branch }}\`"
+            echo "- TTL: ${{ inputs.ttl }}"
+            echo "- Reason: ${{ inputs.reason }}"
+            echo "- Ticket: ${{ inputs.linear_ticket }}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Notify RaSCaaS — build done
+        if: steps.ecr_image.outputs.exists != 'true'
+        run: |
+          python3 "${{ env.NOTIFY_SCRIPT }}" \
+            --phase syncing \
+            --line "Build: pushed ${{ steps.tag.outputs.variance_image }}"
+
+      - name: Notify RaSCaaS — build failed
+        if: failure()
+        run: |
+          python3 "${{ env.NOTIFY_SCRIPT }}" \
+            --phase failed \
+            --level error \
+            --line "Build: failed for ${{ inputs.variance_repo }} @ ${{ inputs.branch }}"
+
+  deploy-stack:
+    name: Create vCluster + Helm deploy
+    needs: [resolve, build-variance]
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Notify RaSCaaS — deploy started
+        run: |
+          python3 "${{ env.NOTIFY_SCRIPT }}" \
+            --phase syncing \
+            --line "Deploy: started for vCluster ${{ needs.resolve.outputs.vcluster_name }}" \
+            --line "Deploy: host cluster ${{ env.EKS_CLUSTER_NAME }} / ns ${{ needs.resolve.outputs.host_namespace }}" \
+            --run-id "${{ github.run_id }}" \
+            --run-url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.14.4
+
+      - name: Install vCluster CLI
+        uses: loft-sh/setup-vcluster@main
+        with:
+          version: ${{ env.VCLUSTER_CLI_VERSION }}
+          kubectl-install: true
+
+      # Match QA EKS deploy workflows (bff/ds/… → central deploy-eks-reusable):
+      # OIDC → DevopsCICDRole → aws eks update-kubeconfig — no kubeconfig secret.
+      - name: Configure AWS credentials (EKS)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_EKS_DEPLOY_ROLE_ARN || 'arn:aws:iam::650251729525:role/DevopsCICDRole' }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Host kubeconfig
+        id: host
+        run: |
+          set -euo pipefail
+          aws eks update-kubeconfig \
+            --name "${{ env.EKS_CLUSTER_NAME }}" \
+            --region "${{ env.AWS_REGION }}" \
+            --kubeconfig host.kubeconfig
+          export KUBECONFIG="$(pwd)/host.kubeconfig"
+          kubectl cluster-info
+          kubectl get ns >/dev/null
+          echo "HOST_KUBECONFIG=$(pwd)/host.kubeconfig" >> "$GITHUB_ENV"
+          echo "skip_deploy=false" >> "$GITHUB_ENV"
+          {
+            echo "### Host EKS"
+            echo "- Cluster: \`${{ env.EKS_CLUSTER_NAME }}\`"
+            echo "- Auth: OIDC → \`DevopsCICDRole\` (or \`AWS_EKS_DEPLOY_ROLE_ARN\`) + \`aws eks update-kubeconfig\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Notify RaSCaaS — host kubeconfig ready
+        run: |
+          python3 "${{ env.NOTIFY_SCRIPT }}" \
+            --phase syncing \
+            --line "Deploy: authenticated to EKS ${{ env.EKS_CLUSTER_NAME }}"
+
+      - name: GitHub App token (helm-charts)
+        id: charts-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.IMPORT_APP_ID }}
+          private-key: ${{ secrets.IMPORT_APP_PRIVATE_KEY }}
+          owner: kovr-ai
+          repositories: helm-charts
+
+      - name: Checkout helm-charts (@ selected branch)
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ inputs.helm_charts_repo }}
+          ref: ${{ needs.resolve.outputs.helm_charts_branch }}
+          path: helm-charts-src
+          token: ${{ steps.charts-token.outputs.token }}
+
+      - name: Notify RaSCaaS — helm-charts checked out
+        run: |
+          python3 "${{ env.NOTIFY_SCRIPT }}" \
+            --phase syncing \
+            --line "Deploy: checked out ${{ inputs.helm_charts_repo }} @ ${{ needs.resolve.outputs.helm_charts_branch }}"
+
+      - name: Resolve chart paths + helm dependency update
+        id: chart
+        run: |
+          set -euo pipefail
+          CHART_REL="${{ inputs.helm_chart_path }}"
+          CHART_DIR="helm-charts-src/${CHART_REL}"
+          if [ ! -d "$CHART_DIR" ]; then
+            echo "Chart path not found: $CHART_DIR (repo=${{ inputs.helm_charts_repo }} ref=${{ needs.resolve.outputs.helm_charts_branch }})" >&2
+            exit 1
+          fi
+          BASELINE="${{ inputs.baseline_values_file }}"
+          if [ -z "$BASELINE" ]; then
+            BASELINE="${CHART_DIR}/values.yaml"
+          elif [ ! -f "$BASELINE" ]; then
+            # Allow path relative to helm-charts checkout
+            if [ -f "helm-charts-src/${BASELINE}" ]; then
+              BASELINE="helm-charts-src/${BASELINE}"
+            else
+              echo "Baseline values not found: ${{ inputs.baseline_values_file }}" >&2
+              exit 1
+            fi
+          fi
+          echo "chart_dir=$CHART_DIR" >> "$GITHUB_OUTPUT"
+          echo "baseline=$BASELINE" >> "$GITHUB_OUTPUT"
+          {
+            echo "### Helm charts"
+            echo "- Repo: \`${{ inputs.helm_charts_repo }}\` @ \`${{ needs.resolve.outputs.helm_charts_branch }}\`"
+            echo "- Chart: \`${CHART_DIR}\`"
+            echo "- Overlay: variance tag + all other services \`:latest\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+          helm dependency update "$CHART_DIR"
+
+      - name: Notify RaSCaaS — chart deps ready
+        run: |
+          python3 "${{ env.NOTIFY_SCRIPT }}" \
+            --phase syncing \
+            --line "Deploy: helm dependency update done (${{ steps.chart.outputs.chart_dir }})"
+
+      - name: Render UAT values overlay
+        run: |
+          pip install pyyaml -q
+          python3 "${{ env.RENDER_SCRIPT }}" \
+            --catalog "${{ env.STACK_CATALOG }}" \
+            --variance-repo "${{ inputs.variance_repo }}" \
+            --variance-image "${{ needs.build-variance.outputs.variance_image }}" \
+            --registry "${{ env.ECR_REGISTRY }}" \
+            --output uat-overlay.yaml
+          cat uat-overlay.yaml
+
+      - name: Notify RaSCaaS — overlay rendered
+        run: |
+          python3 "${{ env.NOTIFY_SCRIPT }}" \
+            --phase syncing \
+            --line "Deploy: UAT values overlay rendered (variance=${{ needs.build-variance.outputs.variance_image }})"
+
+      - name: Create vCluster
+        if: env.skip_deploy != 'true'
+        env:
+          VCLUSTER_NAME: ${{ needs.resolve.outputs.vcluster_name }}
+          VCLUSTER_NS: ${{ needs.resolve.outputs.host_namespace }}
+        run: |
+          set -euo pipefail
+          export KUBECONFIG="${{ env.HOST_KUBECONFIG }}"
+          kubectl get ns "$VCLUSTER_NS" >/dev/null 2>&1 || kubectl create namespace "$VCLUSTER_NS"
+          kubectl label namespace "$VCLUSTER_NS" \
+            app.kubernetes.io/part-of=rascaas-uat \
+            app.kubernetes.io/component=vcluster-host \
+            --overwrite
+
+          if helm status "$VCLUSTER_NAME" -n "$VCLUSTER_NS" >/dev/null 2>&1; then
+            echo "vCluster Helm release $VCLUSTER_NAME already exists in $VCLUSTER_NS — reconnecting"
+            python3 "${{ github.workspace }}/${{ env.NOTIFY_SCRIPT }}" \
+              --phase syncing \
+              --line "Deploy: reusing existing vCluster ${VCLUSTER_NAME} in ${VCLUSTER_NS}"
+          else
+            # Another virtual cluster in this namespace blocks create (vCluster ≥0.25).
+            OTHER=$(helm list -n "$VCLUSTER_NS" -q 2>/dev/null | grep -v "^${VCLUSTER_NAME}$" || true)
+            if [ -n "$OTHER" ]; then
+              echo "ERROR: namespace ${VCLUSTER_NS} already has Helm release(s): ${OTHER}" >&2
+              echo "vCluster ≥0.25 allows only one virtual cluster per namespace." >&2
+              echo "Use the auto host namespace (vCluster name) or tear down the other release." >&2
+              exit 1
+            fi
+            echo "Creating vCluster $VCLUSTER_NAME in namespace $VCLUSTER_NS"
+            python3 "${{ github.workspace }}/${{ env.NOTIFY_SCRIPT }}" \
+              --phase syncing \
+              --line "Deploy: creating vCluster ${VCLUSTER_NAME} in ${VCLUSTER_NS}"
+            vcluster create "$VCLUSTER_NAME" \
+              --namespace "$VCLUSTER_NS" \
+              --connect=false
+          fi
+
+          # GHA runners are outside the cluster: port-forward + --print --server (Loft / Dynamo pattern).
+          # Keep PF alive for Helm. Cleanup Jobs only need host kubeconfig + vcluster delete.
+          SVC="$VCLUSTER_NAME"
+          if ! kubectl get svc "$SVC" -n "$VCLUSTER_NS" >/dev/null 2>&1; then
+            # Some chart versions name the service differently
+            SVC=$(kubectl get svc -n "$VCLUSTER_NS" -l release="$VCLUSTER_NAME" -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || true)
+            if [ -z "$SVC" ]; then
+              SVC=$(kubectl get svc -n "$VCLUSTER_NS" -o name | head -1 | sed 's|^service/||')
+            fi
+          fi
+          echo "Port-forwarding svc/$SVC"
+          kubectl port-forward -n "$VCLUSTER_NS" "svc/${SVC}" 8443:443 >/tmp/vcluster-pf.log 2>&1 &
+          echo $! > /tmp/vcluster-pf.pid
+          for attempt in $(seq 1 30); do
+            if curl -sk --connect-timeout 1 --max-time 2 https://127.0.0.1:8443/healthz >/dev/null 2>&1 \
+              || curl -sk --connect-timeout 1 --max-time 2 https://127.0.0.1:8443/readyz >/dev/null 2>&1; then
+              echo "vCluster API reachable after ${attempt} attempt(s)"
+              break
+            fi
+            if [ "$attempt" -eq 30 ]; then
+              echo "port-forward log:" >&2
+              cat /tmp/vcluster-pf.log >&2 || true
+              exit 1
+            fi
+            sleep 2
+          done
+
+          vcluster connect "$VCLUSTER_NAME" \
+            --namespace "$VCLUSTER_NS" \
+            --server=https://127.0.0.1:8443 \
+            --insecure \
+            --print > vcluster.kubeconfig
+          echo "KUBECONFIG=$(pwd)/vcluster.kubeconfig" >> "$GITHUB_ENV"
+          kubectl --kubeconfig vcluster.kubeconfig --request-timeout=20s get ns
+
+      - name: Notify RaSCaaS — vCluster ready
+        if: env.skip_deploy != 'true'
+        run: |
+          python3 "${{ env.NOTIFY_SCRIPT }}" \
+            --phase syncing \
+            --line "Deploy: vCluster ${{ needs.resolve.outputs.vcluster_name }} API connected"
+
+      - name: Notify RaSCaaS — Helm upgrade starting
+        if: env.skip_deploy != 'true'
+        run: |
+          python3 "${{ env.NOTIFY_SCRIPT }}" \
+            --phase syncing \
+            --line "Deploy: helm upgrade --install ${{ inputs.helm_release }} (wait up to 20m)"
+
+      - name: Helm upgrade — install (variance + :latest for the rest)
+        if: env.skip_deploy != 'true'
+        run: |
+          set -euo pipefail
+          # Chart values from create-kovr-parent-chart; overlay pins variance tag + :latest for all other services.
+          helm upgrade --install "${{ inputs.helm_release }}" "${{ steps.chart.outputs.chart_dir }}" \
+            --namespace "${{ inputs.helm_namespace }}" \
+            --create-namespace \
+            -f uat-overlay.yaml \
+            --wait --timeout 20m
+
+      # Event-based deployment lock: RaSCaaS creates the Redis lock only on phase=ready.
+      # Do not send ready earlier (vCluster up ≠ stack deployed). Failed jobs never lock the branch.
+      - name: Upsert ephemeral Route53 (uat.kovrai.com)
+        if: env.skip_deploy != 'true'
+        id: route53
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          pip install boto3 -q
+          python3 "${{ env.ROUTE53_SCRIPT }}" upsert \
+            --vcluster-name "${{ needs.resolve.outputs.vcluster_name }}" \
+            --zone-id "${{ env.UAT_DNS_ZONE_ID }}" \
+            --zone-name "${{ env.UAT_DNS_ZONE }}" \
+            --alb-dns "${{ env.UAT_ALB_DNS }}" \
+            --alb-zone-id "${{ env.UAT_ALB_HOSTED_ZONE_ID }}"
+          echo "hostname=${{ needs.resolve.outputs.public_hostname }}" >> "$GITHUB_OUTPUT"
+          {
+            echo "### Ephemeral DNS"
+            echo "- https://${{ needs.resolve.outputs.public_hostname }}"
+            echo "- Alias → dualstack.\`${{ env.UAT_ALB_DNS }}\`"
+            echo "- Requires ACM \`*.${{ env.UAT_DNS_ZONE }}\` + host HTTPRoute into the vCluster"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Notify RaSCaaS — deployment created (branch lock)
+        if: env.skip_deploy != 'true'
+        run: |
+          HOST="${{ needs.resolve.outputs.public_hostname }}"
+          DNS_LINE="DNS: https://${HOST} (Route53 ${{ steps.route53.outcome }})"
+          python3 "${{ env.NOTIFY_SCRIPT }}" \
+            --phase ready \
+            --message "Deployment created — branch lock (8d)" \
+            --run-id "${{ github.run_id }}" \
+            --run-url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            --line "Deploy: Helm release ${{ inputs.helm_release }} ready in ${{ inputs.helm_namespace }} (vcluster=${{ needs.resolve.outputs.vcluster_name }})" \
+            --line "Lock: rascaas:lock:${{ needs.resolve.outputs.vcluster_name }} held for deployment ${{ env.RASCAAS_DEPLOYMENT_ID }}" \
+            --line "$DNS_LINE"
+
+      - name: Stop vCluster port-forward
+        if: always() && env.skip_deploy != 'true'
+        run: |
+          if [ -f /tmp/vcluster-pf.pid ]; then
+            kill "$(cat /tmp/vcluster-pf.pid)" 2>/dev/null || true
+          fi
+
+      - name: Parse TTL for vCluster cleanup
+        if: env.skip_deploy != 'true'
+        id: ttl
+        run: |
+          set -euo pipefail
+          SEC=$(python3 "${{ env.PARSE_TTL_SCRIPT }}" "${{ inputs.ttl }}")
+          echo "seconds=$SEC" >> "$GITHUB_OUTPUT"
+          if [ "$SEC" -eq 0 ]; then
+            echo "skip_cleanup=true" >> "$GITHUB_OUTPUT"
+            echo "TTL empty — no vCluster cleanup Job scheduled." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "skip_cleanup=false" >> "$GITHUB_OUTPUT"
+            echo "TTL ${SEC}s — cleanup Job will run after deploy." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Schedule vCluster cleanup Job (host cluster)
+        if: env.skip_deploy != 'true' && steps.ttl.outputs.skip_cleanup != 'true'
+        env:
+          VCLUSTER_NAME: ${{ needs.resolve.outputs.vcluster_name }}
+        run: |
+          set -euo pipefail
+          export KUBECONFIG="${{ env.HOST_KUBECONFIG }}"
+
+          JOB_NS="${{ inputs.cleanup_job_namespace }}"
+          RUN_ID="${{ github.run_id }}"
+          JOB_NAME="uat-cleanup-${RUN_ID}"
+          HOST_SECRET="uat-cleanup-${RUN_ID}-host-kc"
+          # Placeholder secret name required by renderer; cleanup prefers vcluster delete on host.
+          VCLUSTER_SECRET="uat-cleanup-${RUN_ID}-vcluster-kc"
+
+          kubectl create namespace "$JOB_NS" --dry-run=client -o yaml | kubectl apply -f -
+          kubectl -n "$JOB_NS" create secret generic "$HOST_SECRET" \
+            --from-file=config=host.kubeconfig \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+          # Optional empty secret so Job volume mount succeeds (helm uninstall skipped without usable kc).
+          kubectl -n "$JOB_NS" create secret generic "$VCLUSTER_SECRET" \
+            --from-literal=config="" \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+          python3 "${{ env.CLEANUP_JOB_SCRIPT }}" \
+            --job-name "$JOB_NAME" \
+            --job-namespace "$JOB_NS" \
+            --ttl-seconds "${{ steps.ttl.outputs.seconds }}" \
+            --vcluster-name "$VCLUSTER_NAME" \
+            --vcluster-host-namespace "${{ needs.resolve.outputs.host_namespace }}" \
+            --helm-release "${{ inputs.helm_release }}" \
+            --helm-namespace "${{ inputs.helm_namespace }}" \
+            --host-kubeconfig-secret "$HOST_SECRET" \
+            --vcluster-kubeconfig-secret "$VCLUSTER_SECRET" \
+            --cleanup-image "public.ecr.aws/aws-cli/aws-cli:2.15.17" \
+            --vcluster-cli-version "${{ env.VCLUSTER_CLI_VERSION }}" \
+            --uat-dns-zone-id "${{ env.UAT_DNS_ZONE_ID }}" \
+            --uat-dns-zone "${{ env.UAT_DNS_ZONE }}" \
+            --uat-alb-dns "${{ env.UAT_ALB_DNS }}" \
+            --uat-alb-hosted-zone-id "${{ env.UAT_ALB_HOSTED_ZONE_ID }}" \
+            --uat-public-hostname "${{ needs.resolve.outputs.public_hostname }}" \
+            --aws-region "${{ env.AWS_REGION }}" \
+            --route53-role-arn "${{ vars.UAT_ROUTE53_ROLE_ARN || '' }}" \
+            --output uat-cleanup-job.yaml
+          cat uat-cleanup-job.yaml
+          kubectl apply -f uat-cleanup-job.yaml
+
+          python3 "${{ github.workspace }}/${{ env.NOTIFY_SCRIPT }}" \
+            --phase syncing \
+            --line "Deploy: TTL cleanup Job scheduled (${{ inputs.ttl }} → ${{ steps.ttl.outputs.seconds }}s)"
+
+          {
+            echo "### vCluster TTL cleanup"
+            echo "- Job: \`${JOB_NS}/${JOB_NAME}\`"
+            echo "- vCluster: \`${VCLUSTER_NAME}\` in host namespace \`${{ needs.resolve.outputs.host_namespace }}\`"
+            echo "- DNS: \`${{ needs.resolve.outputs.public_hostname }}\` (deleted on TTL if IRSA \`UAT_ROUTE53_ROLE_ARN\` set)"
+            echo "- Deletes after: \`${{ inputs.ttl }}\` (${{ steps.ttl.outputs.seconds }}s)"
+            echo "- Strategy: Route53 DELETE + \`vcluster delete\` on host"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Deploy summary
+        run: |
+          {
+            echo "### Helm deploy"
+            echo "- Release: \`${{ inputs.helm_release }}\` in \`${{ inputs.helm_namespace }}\`"
+            echo "- Variance image: \`${{ needs.build-variance.outputs.variance_image }}\`"
+            echo "- vCluster: \`${{ needs.resolve.outputs.vcluster_name }}\`"
+            echo "- Host cluster: \`${{ env.EKS_CLUSTER_NAME }}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Notify RaSCaaS — deploy failed
+        if: failure()
+        run: |
+          python3 "${{ env.NOTIFY_SCRIPT }}" \
+            --phase failed \
+            --level error \
+            --message "Deployment failed" \
+            --line "Deploy: failed (vcluster=${{ needs.resolve.outputs.vcluster_name }})" \
+            --line "Deploy: see Actions run ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: uat-overlay-${{ github.run_id }}
+          path: |
+            uat-overlay.yaml
+            uat-cleanup-job.yaml
+          if-no-files-found: ignore
+
+  # Belt-and-suspenders: if any prior job failed (or a failure step itself was
+  # skipped), still mark the RaSCaaS attempt failed so inflight lock is released.
+  # always() is required — otherwise this job is skipped when resolve fails and
+  # build/deploy never start (needs would include skipped jobs).
+  notify-failed:
+    name: Notify RaSCaaS — workflow failed
+    needs: [resolve, build-variance, deploy-stack]
+    if: >-
+      always()
+      && inputs.rascaas_deployment_id != ''
+      && (
+        needs.resolve.result == 'failure'
+        || needs.build-variance.result == 'failure'
+        || needs.deploy-stack.result == 'failure'
+      )
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Mark deployment failed
+        env:
+          RASCAAS_DEPLOYMENT_ID: ${{ inputs.rascaas_deployment_id }}
+          RASCAAS_CALLBACK_URL: ${{ inputs.rascaas_callback_url }}
+          RASCAAS_CALLBACK_TOKEN: ${{ inputs.rascaas_callback_token }}
+          RASCAAS_TRACE_ID: ${{ inputs.rascaas_trace_id }}
+        run: |
+          python3 "${{ env.NOTIFY_SCRIPT }}" \
+            --phase failed \
+            --level error \
+            --message "Workflow failed" \
+            --run-id "${{ github.run_id }}" \
+            --run-url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            --line "Workflow: failed (notify-failed safety net)" \
+            --line "Workflow: see Actions run ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
