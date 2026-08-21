@@ -18,7 +18,7 @@ Do not use a placeholder context name. List and select your EKS context:
 
 ```bash
 kubectl config get-contexts
-kubectl config use-context <your-eks-context>   # e.g. arn:aws:eks:us-west-2:650251729525:cluster/qa-kovr
+kubectl config use-context <your-eks-context>   # e.g. arn:aws:eks:us-west-2:YOUR_AWS_ACCOUNT_ID:cluster/YOUR_QA_CONTEXT
 kubectl cluster-info
 ```
 
@@ -90,7 +90,7 @@ CSI mode: apply `secrets/spc.yaml` instead of `plain-secrets.yaml` (see `secrets
 
 See [`gateway/README.md`](gateway/README.md).
 
-**QA (`rascaas.qa.kovr.ai`):**
+**QA (`rascaas.qa.example.com`):**
 
 ```bash
 kubectl apply -f helm/_crds/gateway/rascaas-gateway-base.yaml
@@ -99,7 +99,7 @@ kubectl apply -f helm/_crds/gateway/rascaas-gateway-https.qa.yaml
 kubectl get gateway rascaas-gateway -n rascaas
 ```
 
-Point DNS `rascaas.qa.kovr.ai` at the ALB address in `status.addresses`.
+Point DNS `rascaas.qa.example.com` at the ALB address in `status.addresses`.
 
 **Other hosts:** use `rascaas-gateway-https.template.yaml` with `sed` (documented in `gateway/README.md`).
 
@@ -110,17 +110,17 @@ Point DNS `rascaas.qa.kovr.ai` at the ALB address in `status.addresses`.
 ## 4. Helm chart
 
 ```bash
-export ECR_IMAGE=650251729525.dkr.ecr.us-west-2.amazonaws.com/rascaas:latest
+export ECR_IMAGE=YOUR_AWS_ACCOUNT_ID.dkr.ecr.us-west-2.amazonaws.com/rascaas:latest
 
 helm upgrade --install rascaas ./helm/rascaas -n rascaas \
   --set secrets.mode=plain \
   --set fastapi.image="$ECR_IMAGE" \
-  --set fastapi.env.GITHUB_APP_ID="3825031" \
-  --set fastapi.env.GITHUB_INSTALLATION_ID="134904362" \
+  --set fastapi.env.GITHUB_APP_ID="YOUR_GITHUB_APP_ID" \
+  --set fastapi.env.GITHUB_INSTALLATION_ID="YOUR_GITHUB_INSTALLATION_ID" \
   --set fastapi.env.OIDC_ISSUER_URL="https://<idp>/realms/<realm>" \
   --set fastapi.env.OIDC_CLIENT_ID="platform-ui" \
   --set fastapi.env.APP_BASE_URL="https://${RASCAAS_HOST}" \
-  --set fastapi.env.GITHUB_DISPATCH_REPO=kovr-ai/platform \
+  --set fastapi.env.GITHUB_DISPATCH_REPO=YOUR_ORG/platform \
   --set fastapi.env.DEFAULT_WORKFLOW=uat-deploy.yml \
   --set fastapi.env.TRUST_OAUTH2_PROXY_IDENTITY=true \
   --set oauth2proxy.oidcIssuerUrl="https://<idp>/realms/<realm>" \

@@ -132,9 +132,9 @@ class DeployRequest(BaseModel):
     reason: str = ""
     linear_ticket: str = ""
     force: bool = False
-    # Parent Kovr umbrella chart branch on kovr-ai/helm-charts.
-    helm_charts_branch: str = "create-kovr-parent-chart"
-    helm_charts_repo: str = "kovr-ai/helm-charts"
+    # Parent umbrella chart branch on YOUR_ORG/helm-charts.
+    helm_charts_branch: str = "main"
+    helm_charts_repo: str = "YOUR_ORG/helm-charts"
 
 
 @app.get("/health")
@@ -167,7 +167,7 @@ async def index(request: Request):
 @app.get("/api/repos")
 async def list_repos(_user: User = Depends(get_current_user)):
     if gh_client is None:
-        return [{"full_name": "kovr/example", "name": "example"}]
+        return [{"full_name": "YOUR_ORG/example", "name": "example"}]
     try:
         return await gh_client.list_repos()
     except Exception as exc:
@@ -557,16 +557,16 @@ async def deploy_cluster(body: DeployRequest, _user: User = Depends(get_current_
                     if not (settings.github_dispatch_repo or "").strip():
                         db.append_event(
                             dep,
-                            "GITHUB_DISPATCH_REPO unset — dispatching on selected repo (set kovr-ai/platform)",
+                            "GITHUB_DISPATCH_REPO unset — dispatching on selected repo (set YOUR_ORG/platform)",
                             level="error",
                             source="system",
                         )
                     # workflow_dispatch inputs are hard-capped at 10 by GitHub. Only send
                     # what differs from the workflow defaults so callback url+token always fit.
-                    # Workflow defaults: helm_charts_repo=kovr-ai/helm-charts,
-                    # helm_charts_branch=create-kovr-parent-chart.
-                    default_helm_repo = "kovr-ai/helm-charts"
-                    default_helm_branch = "create-kovr-parent-chart"
+                    # Workflow defaults: helm_charts_repo=YOUR_ORG/helm-charts,
+                    # helm_charts_branch=main.
+                    default_helm_repo = "YOUR_ORG/helm-charts"
+                    default_helm_branch = "main"
                     helm_charts_branch = (
                         (body.helm_charts_branch or "").strip() or default_helm_branch
                     )

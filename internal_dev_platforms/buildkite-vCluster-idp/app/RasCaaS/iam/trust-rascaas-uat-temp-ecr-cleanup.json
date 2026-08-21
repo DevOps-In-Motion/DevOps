@@ -5,7 +5,7 @@
       "Sid": "AllowEksServiceAccount",
       "Effect": "Allow",
       "Principal": {
-        "Federated": "arn:aws:iam::650251729525:oidc-provider/oidc.eks.us-west-2.amazonaws.com/id/OIDC_PROVIDER_ID"
+        "Federated": "arn:aws:iam::YOUR_AWS_ACCOUNT_ID:oidc-provider/oidc.eks.us-west-2.amazonaws.com/id/OIDC_PROVIDER_ID"
       },
       "Action": "sts:AssumeRoleWithWebIdentity",
       "Condition": {

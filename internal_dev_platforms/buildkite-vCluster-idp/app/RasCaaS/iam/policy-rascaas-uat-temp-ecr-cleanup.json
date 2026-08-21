@@ -11,13 +11,13 @@
       "Resource": "*"
     },
     {
-      "Sid": "CleanupKovrUatTempImages",
+      "Sid": "CleanupUatTempImages",
       "Effect": "Allow",
       "Action": [
         "ecr:DescribeImages",
         "ecr:BatchDeleteImage"
       ],
-      "Resource": "arn:aws:ecr:us-west-2:650251729525:repository/kovr-uat-temp"
+      "Resource": "arn:aws:ecr:us-west-2:YOUR_AWS_ACCOUNT_ID:repository/uat-temp"
     }
   ]
 }

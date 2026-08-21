@@ -1,15 +1,15 @@
-# QA — HTTPS listener for rascaas-gateway (rascaas.qa.kovrai.com)
-# Account 650251729525, us-west-2.
+# QA — HTTPS listener for rascaas-gateway (rascaas.qa.example.com)
+# Account YOUR_AWS_ACCOUNT_ID, us-west-2.
 #
 # Prerequisite: kubectl apply -f rascaas-gateway-base.yaml
 #
-# Cert: ACM *.qa.kovrai.com
-#   arn:aws:acm:us-west-2:650251729525:certificate/435ee5c0-a0e5-4edc-87b7-6f9248f22e45
+# Cert: ACM *.qa.example.com
+#   arn:aws:acm:us-west-2:YOUR_AWS_ACCOUNT_ID:certificate/YOUR_ACM_CERTIFICATE_ID
 #
 # Attach LBC via Gateway.spec.infrastructure.parametersRef (not annotation).
 # See AWS LBC docs: https://kubernetes-sigs.github.io/aws-load-balancer-controller/latest/guide/gateway/customization/
 #
-# DNS: rascaas.qa.kovrai.com → ALB hostname from:
+# DNS: rascaas.qa.example.com → ALB hostname from:
 #   kubectl get gateway rascaas-gateway -n rascaas -o jsonpath='{.status.addresses[0].value}'
 ---
 apiVersion: gateway.k8s.aws/v1beta1
@@ -24,7 +24,7 @@ spec:
     name: rascaas-default-tgc
   listenerConfigurations:
     - protocolPort: HTTPS:443
-      defaultCertificate: arn:aws:acm:us-west-2:650251729525:certificate/435ee5c0-a0e5-4edc-87b7-6f9248f22e45
+      defaultCertificate: arn:aws:acm:us-west-2:YOUR_AWS_ACCOUNT_ID:certificate/YOUR_ACM_CERTIFICATE_ID
 ---
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
@@ -46,7 +46,7 @@ spec:
         namespaces:
           from: Same
     - name: https
-      hostname: rascaas.qa.kovrai.com
+      hostname: rascaas.qa.example.com
       protocol: HTTPS
       port: 443
       allowedRoutes:

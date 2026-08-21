@@ -89,7 +89,7 @@ async def _mock_tick(dep_id: str, store: DeploymentStore) -> AsyncIterator[str]:
             store.append_event(dep, line, source="mock")
             if "Helm" in line:
                 dep.phase = ClusterPhase.SYNCING
-                dep.message = "Syncing the Kovr.ai Helm stack"
+                dep.message = "Syncing the Helm stack"
             elif sent == len(timeline) - 1:
                 dep.phase = ClusterPhase.READY
                 dep.message = "Stack is ready"

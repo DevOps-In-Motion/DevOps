@@ -1,6 +1,6 @@
 # Platform-only UAT deploy — all builds and Helm deploys run in this repo.
 # GitHub repo name: platform (local clone path: platform-testing/).
-# RaSCaaS dispatches workflow_dispatch here (GITHUB_DISPATCH_REPO=kovr-ai/platform)
+# RaSCaaS dispatches workflow_dispatch here (GITHUB_DISPATCH_REPO=YOUR_ORG/platform)
 # with variance_repo = selected service. Workflow ref = GITHUB_DISPATCH_REF (default main).
 # Trigger: workflow_dispatch only (webhook from RaSCaaS) — never on push.
 # No per-service-repo workflows — limits blast radius and keeps secrets/roles in one place.
@@ -59,15 +59,15 @@ on:
         type: string
         default: ""
       helm_charts_repo:
-        description: "GitHub repo (owner/name) for the Kovr umbrella Helm charts"
+        description: "GitHub repo (owner/name) for the umbrella Helm charts"
         required: false
         type: string
-        default: kovr-ai/helm-charts
+        default: YOUR_ORG/helm-charts
       helm_charts_branch:
         description: "Branch of helm-charts to deploy"
         required: false
         type: string
-        default: create-kovr-parent-chart
+        default: main
       baseline_values_file:
         description: "Baseline Helm values relative to helm-charts checkout (empty = <chart>/values.yaml)"
         required: false
@@ -77,17 +77,17 @@ on:
         description: "Umbrella chart path relative to helm-charts checkout"
         required: false
         type: string
-        default: kovr
+        default: app
       helm_release:
         description: "Helm release name"
         required: false
         type: string
-        default: kovr
+        default: app
       helm_namespace:
         description: "Target namespace inside the vCluster"
         required: false
         type: string
-        default: kovr
+        default: app
       rascaas_deployment_id:
         description: "RaSCaaS deployment id (for progress callbacks)"
         required: false
@@ -112,10 +112,10 @@ on:
 env:
   ECR_REGISTRY: ${{ vars.ECR_REGISTRY }}
   # Single temp ECR repo for UAT variance digests (14-day CronJob GC on host).
-  ECR_UAT_TEMP_REPO: ${{ vars.ECR_UAT_TEMP_REPO || 'kovr-uat-temp' }}
+  ECR_UAT_TEMP_REPO: ${{ vars.ECR_UAT_TEMP_REPO || 'uat-temp' }}
   AWS_REGION: ${{ vars.AWS_REGION || 'us-west-2' }}
   # Same host cluster as service deploy-*-eks.yml (central-workflows / DevopsCICDRole).
-  EKS_CLUSTER_NAME: ${{ vars.EKS_CLUSTER_NAME || 'qa-kovr-app-cluster' }}
+  EKS_CLUSTER_NAME: ${{ vars.EKS_CLUSTER_NAME || 'YOUR_EKS_CLUSTER' }}
   STACK_CATALOG: workflows/rascaas/stack-services.yaml
   RENDER_SCRIPT: workflows/rascaas/render_uat_overlay.py
   PARSE_TTL_SCRIPT: workflows/rascaas/parse_ttl.py
@@ -125,10 +125,10 @@ env:
   ROUTE53_SCRIPT: workflows/rascaas/uat_route53.py
   NOTIFY_SCRIPT: workflows/rascaas/rascaas_notify.py
   VCLUSTER_CLI_VERSION: v0.22.1
-  # Ephemeral DNS: {vcluster}.uat.kovrai.com → shared QA ALB (override via repo vars).
-  UAT_DNS_ZONE: ${{ vars.UAT_DNS_ZONE || 'uat.kovrai.com' }}
-  UAT_DNS_ZONE_ID: ${{ vars.UAT_DNS_ZONE_ID || 'Z0358955IXI81VFP9KE9' }}
-  UAT_ALB_DNS: ${{ vars.UAT_ALB_DNS || 'qa-kovr-app-eks-alb-771923398.us-west-2.elb.amazonaws.com' }}
+  # Ephemeral DNS: {vcluster}.uat.example.com → shared QA ALB (override via repo vars).
+  UAT_DNS_ZONE: ${{ vars.UAT_DNS_ZONE || 'uat.example.com' }}
+  UAT_DNS_ZONE_ID: ${{ vars.UAT_DNS_ZONE_ID || 'YOUR_ROUTE53_ZONE_ID' }}
+  UAT_ALB_DNS: ${{ vars.UAT_ALB_DNS || 'YOUR_ALB_DNS.us-west-2.elb.amazonaws.com' }}
   UAT_ALB_HOSTED_ZONE_ID: ${{ vars.UAT_ALB_HOSTED_ZONE_ID || 'Z1H1FL5HABSF5' }}
   RASCAAS_DEPLOYMENT_ID: ${{ inputs.rascaas_deployment_id }}
   RASCAAS_CALLBACK_URL: ${{ inputs.rascaas_callback_url }}
@@ -173,10 +173,10 @@ jobs:
         id: helmref
         run: |
           set -euo pipefail
-          # Parent umbrella chart lives on create-kovr-parent-chart (not the variance service branch).
+          # Parent umbrella chart lives on main (not the variance service branch).
           BRANCH="${{ inputs.helm_charts_branch }}"
           if [ -z "$BRANCH" ]; then
-            BRANCH="create-kovr-parent-chart"
+            BRANCH="main"
           fi
           echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
           echo "helm-charts: ${{ inputs.helm_charts_repo }} @ $BRANCH" >> "$GITHUB_STEP_SUMMARY"
@@ -282,7 +282,7 @@ jobs:
             --run-id "${{ github.run_id }}" \
             --run-url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
-      # Private sibling repos: default GITHUB_TOKEN cannot checkout kovr-ai/* from platform
+      # Private sibling repos: default GITHUB_TOKEN cannot checkout YOUR_ORG/* from platform
       # ("Repository not found"). Reuse org Import App (same secrets as twin-repo import).
       - name: GitHub App token (variance repo)
         id: variance-token
@@ -290,7 +290,7 @@ jobs:
         with:
           app-id: ${{ secrets.IMPORT_APP_ID }}
           private-key: ${{ secrets.IMPORT_APP_PRIVATE_KEY }}
-          owner: kovr-ai
+          owner: YOUR_ORG
           repositories: ${{ needs.resolve.outputs.repo_name }}
 
       - name: Checkout variance repo
@@ -377,7 +377,7 @@ jobs:
             --phase syncing \
             --line "Build: image tag ${{ steps.tag.outputs.image_tag }} (linux/amd64)"
 
-      # Same as service deploy-*-eks / build-cve-fix: private base images live on cgr.dev/kovr.ai
+      # Same as service deploy-*-eks / build-cve-fix: private base images live on cgr.dev/YOUR_ORG
       - name: Login to Chainguard (cgr.dev)
         if: steps.ecr_image.outputs.exists != 'true'
         env:
@@ -458,7 +458,7 @@ jobs:
             BUILD_ARGS+=(--build-arg "NPM_TOKEN=${{ steps.npm.outputs.token }}")
             echo "✓ NPM token passed to build (secret mount + build arg)"
           fi
-          # Kovr service Dockerfiles use BuildKit-only features: RUN --mount=type=secret
+          # Service Dockerfiles use BuildKit-only features: RUN --mount=type=secret
           # AND Dockerfile heredocs (RUN ... <<'EOF'). Build with Docker BuildKit.
           # podman/buildah on the runner does NOT honor heredocs and fails reading the
           # heredoc body as an instruction: Error building at STEP "SET": Unknown instruction "SET".
@@ -548,7 +548,7 @@ jobs:
       - name: Configure AWS credentials (EKS)
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ secrets.AWS_EKS_DEPLOY_ROLE_ARN || 'arn:aws:iam::650251729525:role/DevopsCICDRole' }}
+          role-to-assume: ${{ secrets.AWS_EKS_DEPLOY_ROLE_ARN || 'arn:aws:iam::YOUR_AWS_ACCOUNT_ID:role/DevopsCICDRole' }}
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Host kubeconfig
@@ -582,7 +582,7 @@ jobs:
         with:
           app-id: ${{ secrets.IMPORT_APP_ID }}
           private-key: ${{ secrets.IMPORT_APP_PRIVATE_KEY }}
-          owner: kovr-ai
+          owner: YOUR_ORG
           repositories: helm-charts
 
       - name: Checkout helm-charts (@ selected branch)
@@ -744,7 +744,7 @@ jobs:
         if: env.skip_deploy != 'true'
         run: |
           set -euo pipefail
-          # Chart values from create-kovr-parent-chart; overlay pins variance tag + :latest for all other services.
+          # Chart values from main; overlay pins variance tag + :latest for all other services.
           helm upgrade --install "${{ inputs.helm_release }}" "${{ steps.chart.outputs.chart_dir }}" \
             --namespace "${{ inputs.helm_namespace }}" \
             --create-namespace \
@@ -753,7 +753,7 @@ jobs:
 
       # Event-based deployment lock: RaSCaaS creates the Redis lock only on phase=ready.
       # Do not send ready earlier (vCluster up ≠ stack deployed). Failed jobs never lock the branch.
-      - name: Upsert ephemeral Route53 (uat.kovrai.com)
+      - name: Upsert ephemeral Route53 (uat.example.com)
         if: env.skip_deploy != 'true'
         id: route53
         continue-on-error: true

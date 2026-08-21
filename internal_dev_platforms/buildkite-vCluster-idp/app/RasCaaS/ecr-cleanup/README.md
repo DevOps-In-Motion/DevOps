@@ -1,4 +1,4 @@
-# Standalone CronJob image that deletes aged tags from ECR `kovr-uat-temp`.
+# Standalone CronJob image that deletes aged tags from ECR `uat-temp`.
 # Not part of the RaSCaaS IDP pod or image.
 #
 # Build/push (also done by `.github/workflows/rascaas-build.yml`):

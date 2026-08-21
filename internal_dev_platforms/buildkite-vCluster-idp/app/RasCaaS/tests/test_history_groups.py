@@ -25,7 +25,7 @@ from app.history_groups import build_history_groups  # noqa: E402
 def _dep(**kw) -> ClusterDeployment:
     d = ClusterDeployment(
         id=kw["id"],
-        repo=kw.get("repo", "kovr-ai/a"),
+        repo=kw.get("repo", "YOUR_ORG/a"),
         branch=kw.get("branch", "main"),
         workflow="uat-deploy.yml",
         ttl="3d",
@@ -40,20 +40,20 @@ def _dep(**kw) -> ClusterDeployment:
 
 def main() -> None:
     rows = [
-        _dep(id="f1", repo="kovr-ai/a", branch="main", phase=ClusterPhase.FAILED),
-        _dep(id="f2", repo="kovr-ai/a", branch="main", phase=ClusterPhase.FAILED),
+        _dep(id="f1", repo="YOUR_ORG/a", branch="main", phase=ClusterPhase.FAILED),
+        _dep(id="f2", repo="YOUR_ORG/a", branch="main", phase=ClusterPhase.FAILED),
         _dep(
             id="f3",
-            repo="kovr-ai/a",
+            repo="YOUR_ORG/a",
             branch="main",
             phase=ClusterPhase.FAILED,
             lifecycle=LIFECYCLE_SUPERSEDED,  # must still appear on Failed
         ),
-        _dep(id="r1", repo="kovr-ai/a", branch="main", phase=ClusterPhase.READY),
-        _dep(id="p1", repo="kovr-ai/b", branch="feat", phase=ClusterPhase.PROVISIONING),
+        _dep(id="r1", repo="YOUR_ORG/a", branch="main", phase=ClusterPhase.READY),
+        _dep(id="p1", repo="YOUR_ORG/b", branch="feat", phase=ClusterPhase.PROVISIONING),
         _dep(
             id="old",
-            repo="kovr-ai/b",
+            repo="YOUR_ORG/b",
             branch="feat",
             phase=ClusterPhase.READY,
             lifecycle=LIFECYCLE_SUPERSEDED,  # must NOT appear on Active
@@ -62,13 +62,13 @@ def main() -> None:
     out = build_history_groups(rows)
 
     assert len(out["failed"]) == 1, out["failed"]
-    assert out["failed"][0]["label"] == "kovr-ai/a @ main"
+    assert out["failed"][0]["label"] == "YOUR_ORG/a @ main"
     assert out["failed"][0]["count"] == 3
     failed_ids = {d["id"] for d in out["failed"][0]["deployments"]}
     assert failed_ids == {"f1", "f2", "f3"}
 
     active_labels = {g["label"] for g in out["active"]}
-    assert active_labels == {"kovr-ai/a @ main", "kovr-ai/b @ feat"}, active_labels
+    assert active_labels == {"YOUR_ORG/a @ main", "YOUR_ORG/b @ feat"}, active_labels
     active_ids = {d["id"] for g in out["active"] for d in g["deployments"]}
     assert active_ids == {"r1", "p1"}, active_ids
     assert all(d["phase"] != "failed" for g in out["active"] for d in g["deployments"])

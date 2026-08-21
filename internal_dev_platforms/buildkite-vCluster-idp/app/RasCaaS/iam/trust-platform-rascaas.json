@@ -5,15 +5,15 @@
       "Sid": "AllowEksRascaasServiceAccounts",
       "Effect": "Allow",
       "Principal": {
-        "Federated": "arn:aws:iam::650251729525:oidc-provider/oidc.eks.us-west-2.amazonaws.com/id/392051447081F2632D55463CBA6E2F2C"
+        "Federated": "arn:aws:iam::YOUR_AWS_ACCOUNT_ID:oidc-provider/oidc.eks.us-west-2.amazonaws.com/id/YOUR_EKS_OIDC_PROVIDER_ID"
       },
       "Action": "sts:AssumeRoleWithWebIdentity",
       "Condition": {
         "StringEquals": {
-          "oidc.eks.us-west-2.amazonaws.com/id/392051447081F2632D55463CBA6E2F2C:aud": "sts.amazonaws.com"
+          "oidc.eks.us-west-2.amazonaws.com/id/YOUR_EKS_OIDC_PROVIDER_ID:aud": "sts.amazonaws.com"
         },
         "StringLike": {
-          "oidc.eks.us-west-2.amazonaws.com/id/392051447081F2632D55463CBA6E2F2C:sub": [
+          "oidc.eks.us-west-2.amazonaws.com/id/YOUR_EKS_OIDC_PROVIDER_ID:sub": [
             "system:serviceaccount:rascaas:rascaas-sa",
             "system:serviceaccount:rascaas:oauth2proxy-sa"
           ]

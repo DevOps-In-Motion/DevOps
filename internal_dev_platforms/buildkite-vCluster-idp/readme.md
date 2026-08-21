@@ -14,10 +14,10 @@ Developer  →  RaSCaaS UI (oauth2-proxy + FastAPI)
                  ▼
            uat-deploy.yml
                  │
-                 ├─ build variance image → ECR (kovr-uat-temp)
+                 ├─ build variance image → ECR (uat-temp)
                  ├─ create vCluster  tmp-<repo>-<branch>
                  ├─ Helm full stack (:latest for everything else)
-                 └─ DNS  {vcluster}.uat.kovrai.com → shared QA ALB
+                 └─ DNS  {vcluster}.uat.example.com → shared QA ALB
 ```
 
 | Piece | Role |
@@ -59,7 +59,7 @@ Deep dive: [`app/RasCaaS/README.md`](app/RasCaaS/README.md) · pipelines: [`work
 
 | Need | Notes |
 |------|--------|
-| **kubectl** + kubeconfig to the target EKS cluster | QA example: `qa-kovr` |
+| **kubectl** + kubeconfig to the target EKS cluster | QA example: `YOUR_QA_CONTEXT` |
 | **Helm 3** | `helm dependency update` pulls Keycloak chart |
 | **Docker / Compose** | Local stack only |
 | **GitHub App** | Org install with repo + Actions dispatch rights (not a PAT) |
@@ -152,7 +152,7 @@ kubectl apply -f helm/_crds/gateway/rascaas-gateway-https.qa.yaml
 kubectl get gateway rascaas-gateway -n rascaas
 ```
 
-Point DNS (`rascaas.qa.kovrai.com` for QA) at the Gateway ALB address. After Helm is up, confirm ALB listener rules include `/api/runner*` (callbacks bypass oauth2-proxy) — see [`helm/_crds/gateway/README.md`](app/RasCaaS/helm/_crds/gateway/README.md).
+Point DNS (`rascaas.qa.example.com` for QA) at the Gateway ALB address. After Helm is up, confirm ALB listener rules include `/api/runner*` (callbacks bypass oauth2-proxy) — see [`helm/_crds/gateway/README.md`](app/RasCaaS/helm/_crds/gateway/README.md).
 
 ### 5. Helm install
 

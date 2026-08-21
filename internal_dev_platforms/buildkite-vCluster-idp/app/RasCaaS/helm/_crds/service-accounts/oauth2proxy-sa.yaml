@@ -8,4 +8,4 @@ metadata:
     app.kubernetes.io/component: oauth2-proxy
   annotations:
     # QA IRSA — CSI mount of rascaas-secrets (SM). Same role as rascaas-sa.
-    eks.amazonaws.com/role-arn: arn:aws:iam::650251729525:role/platform-rascaas
+    eks.amazonaws.com/role-arn: arn:aws:iam::YOUR_AWS_ACCOUNT_ID:role/platform-rascaas

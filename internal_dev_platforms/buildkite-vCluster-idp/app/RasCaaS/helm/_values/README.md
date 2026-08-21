@@ -4,7 +4,7 @@ Overlays for `helm upgrade --install` (passed with `-f` after chart defaults in 
 
 | File | Environment |
 |------|-------------|
-| [`qa-install-values.yaml`](qa-install-values.yaml) | QA — `https://rascaas.qa.kovr.ai`, ECR `650251729525`, Cognito `qa-kovr-pool` |
+| [`qa-install-values.yaml`](qa-install-values.yaml) | QA — `https://rascaas.qa.example.com`, ECR `YOUR_AWS_ACCOUNT_ID`, Cognito `YOUR_COGNITO_USER_POOL` |
 
 ## QA install
 

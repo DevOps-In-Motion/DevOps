@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Ephemeral Route53 A-alias records for RaSCaaS UAT envs under uat.kovrai.com.
+"""Ephemeral Route53 A-alias records for RaSCaaS UAT envs under uat.example.com.
 
-Each vCluster gets ``{tmp-<repo>-<branch>}.uat.kovrai.com`` → dualstack.<shared ALB>.
+Each vCluster gets ``{tmp-<repo>-<branch>}.uat.example.com`` → dualstack.<shared ALB>.
 Identity is one namespace + one Helm release named ``tmp-<repo>-<branch>``.
 
 Requires:
-  - ACM ``*.uat.kovrai.com`` for HTTPS (apex cert alone is not enough for subdomains)
+  - ACM ``*.uat.example.com`` for HTTPS (apex cert alone is not enough for subdomains)
   - IAM ``route53:ChangeResourceRecordSets`` on the UAT hosted zone
   - Host HTTPRoute / ingress so the ALB actually serves that hostname into the vCluster
 """
@@ -18,9 +18,9 @@ import os
 import sys
 
 
-DEFAULT_ZONE_NAME = "uat.kovrai.com"
-DEFAULT_ZONE_ID = "Z0358955IXI81VFP9KE9"
-DEFAULT_ALB_DNS = "qa-kovr-app-eks-alb-771923398.us-west-2.elb.amazonaws.com"
+DEFAULT_ZONE_NAME = "uat.example.com"
+DEFAULT_ZONE_ID = "YOUR_ROUTE53_ZONE_ID"
+DEFAULT_ALB_DNS = "YOUR_ALB_DNS.us-west-2.elb.amazonaws.com"
 DEFAULT_ALB_ZONE_ID = "Z1H1FL5HABSF5"  # us-west-2 ELB regional HZ
 
 

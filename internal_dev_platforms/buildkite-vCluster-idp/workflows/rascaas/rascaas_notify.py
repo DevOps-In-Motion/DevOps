@@ -3,7 +3,7 @@
 
 Env (set from workflow_dispatch inputs):
   RASCAAS_DEPLOYMENT_ID
-  RASCAAS_CALLBACK_URL   — e.g. https://rascaas.qa.kovrai.com/api/runner/events
+  RASCAAS_CALLBACK_URL   — e.g. https://rascaas.qa.example.com/api/runner/events
   RASCAAS_CALLBACK_TOKEN
   RASCAAS_TRACE_ID       — optional deploy-scoped trace id
 

@@ -1,4 +1,4 @@
-# RaSCaaS IAM (QA — account `650251729525`, region `us-west-2`)
+# RaSCaaS IAM (QA — account `YOUR_AWS_ACCOUNT_ID`, region `us-west-2`)
 
 Canonical policy/trust JSON for IRSA and GitHub Actions ECR access. Replace `OIDC_PROVIDER_ID` in trust files before create (see below).
 
@@ -8,19 +8,19 @@ Canonical policy/trust JSON for IRSA and GitHub Actions ECR access. Replace `OID
 |------|-----------|---------|
 | [`policy-platform-rascaas.json`](policy-platform-rascaas.json) | Role `platform-rascaas` | CSI: `GetSecretValue` / `DescribeSecret` on SM `rascaas-secrets` |
 | [`trust-platform-rascaas.json`](trust-platform-rascaas.json) | Same role (assume-role policy) | IRSA for `rascaas-sa` + `oauth2proxy-sa` |
-| [`policy-qa-kovr-lbc-set-rule-priorities.json`](policy-qa-kovr-lbc-set-rule-priorities.json) | Role `qa-kovr-app-cluster-lb-controller-role` (inline) | Unconditional `SetRulePriorities` / rule CRUD — fixes Gateway HTTPRoute reconciles when listener rules lack `elbv2.k8s.aws/cluster` tag |
-| [`policy-rascaas-uat-temp-ecr-cleanup.json`](policy-rascaas-uat-temp-ecr-cleanup.json) | Role `rascaas-uat-temp-ecr-cleanup` | CronJob: describe + delete images in `kovr-uat-temp` only |
+| [`policy-lbc-set-rule-priorities.json`](policy-lbc-set-rule-priorities.json) | Role `YOUR_EKS_CLUSTER-lb-controller-role` (inline) | Unconditional `SetRulePriorities` / rule CRUD — fixes Gateway HTTPRoute reconciles when listener rules lack `elbv2.k8s.aws/cluster` tag |
+| [`policy-rascaas-uat-temp-ecr-cleanup.json`](policy-rascaas-uat-temp-ecr-cleanup.json) | Role `rascaas-uat-temp-ecr-cleanup` | CronJob: describe + delete images in `uat-temp` only |
 | [`trust-rascaas-uat-temp-ecr-cleanup.json`](trust-rascaas-uat-temp-ecr-cleanup.json) | Same role (assume-role policy) | IRSA for SA `rascaas` / `rascaas-uat-temp-ecr-cleanup` |
-| [`policy-gha-rascaas-ecr-push.json`](policy-gha-rascaas-ecr-push.json) | `GithubBackendDeployRole` (`AWS_DEPLOY_ROLE_ARN`) | Create/push `kovr-uat-temp`, `rascaas`, `rascaas-uat-ecr-cleanup` |
+| [`policy-gha-rascaas-ecr-push.json`](policy-gha-rascaas-ecr-push.json) | `GithubBackendDeployRole` (`AWS_DEPLOY_ROLE_ARN`) | Create/push `uat-temp`, `rascaas`, `rascaas-uat-ecr-cleanup` |
 
-GitHub secret: `AWS_DEPLOY_ROLE_ARN=arn:aws:iam::650251729525:role/GithubBackendDeployRole`
+GitHub secret: `AWS_DEPLOY_ROLE_ARN=arn:aws:iam::YOUR_AWS_ACCOUNT_ID:role/GithubBackendDeployRole`
 
 ## Create CSI secrets role (`platform-rascaas`)
 
 Trust JSON already has the QA cluster OIDC id. From this directory:
 
 ```bash
-export AWS_PROFILE=qa-kovr
+export AWS_PROFILE=YOUR_AWS_PROFILE
 
 aws iam create-role \
   --role-name platform-rascaas \
@@ -40,18 +40,18 @@ Symptom: after changing RaSCaaS `HTTPRoute`s, ALB still has **stale** path rules
 
 `AccessDenied: … elasticloadbalancing:SetRulePriorities on … listener-rule/…`
 
-Cause: managed policy `qa-kovr-app-cluster-lb-controller-policy` allows `SetRulePriorities` only when `aws:ResourceTag/elbv2.k8s.aws/cluster` is present. Listener **rules** often lack that tag → LBC cannot reorder/delete rules.
+Cause: managed policy `YOUR_EKS_CLUSTER-lb-controller-policy` allows `SetRulePriorities` only when `aws:ResourceTag/elbv2.k8s.aws/cluster` is present. Listener **rules** often lack that tag → LBC cannot reorder/delete rules.
 
 Apply additive inline policy (no tag condition), matching AWS LBC IAM docs:
 
 ```bash
-cd ~/githubRepos/kovr/platform-testing/RasCaaS/iam
-export AWS_PROFILE=qa-kovr
+cd ./app/RasCaaS/iam
+export AWS_PROFILE=YOUR_AWS_PROFILE
 
 aws iam put-role-policy \
-  --role-name qa-kovr-app-cluster-lb-controller-role \
+  --role-name YOUR_EKS_CLUSTER-lb-controller-role \
   --policy-name rascaas-lbc-set-rule-priorities \
-  --policy-document file://policy-qa-kovr-lbc-set-rule-priorities.json
+  --policy-document file://policy-lbc-set-rule-priorities.json
 
 kubectl rollout restart deployment -n kube-system aws-load-balancer-controller
 ```
@@ -63,7 +63,7 @@ Also confirm **`/api/runner` + `/api/runner/*` → FastAPI** exists with priorit
 ## Resolve OIDC provider ID
 
 ```bash
-aws eks describe-cluster --name qa-kovr-app-cluster --region us-west-2 \
+aws eks describe-cluster --name YOUR_EKS_CLUSTER --region us-west-2 \
   --query 'cluster.identity.oidc.issuer' --output text
 # → https://oidc.eks.us-west-2.amazonaws.com/id/<OIDC_PROVIDER_ID>
 ```
@@ -84,7 +84,7 @@ aws iam put-role-policy \
   --policy-document file://policy-rascaas-uat-temp-ecr-cleanup.json
 ```
 
-Helm already expects: `arn:aws:iam::650251729525:role/rascaas-uat-temp-ecr-cleanup`  
+Helm already expects: `arn:aws:iam::YOUR_AWS_ACCOUNT_ID:role/rascaas-uat-temp-ecr-cleanup`  
 (SA name when release is `rascaas`: `rascaas-uat-temp-ecr-cleanup`.)
 
 ## Attach GHA push policy

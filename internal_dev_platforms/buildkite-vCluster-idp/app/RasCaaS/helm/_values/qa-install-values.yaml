@@ -1,17 +1,17 @@
 # QA — RaSCaaS Helm overlay
-# Account: 650251729525 | Region: us-west-2
-# Public URL: https://rascaas.qa.kovrai.com
+# Account: YOUR_AWS_ACCOUNT_ID | Region: us-west-2
+# Public URL: https://rascaas.qa.example.com
 #
-# ── Cognito (qa-kovr-pool) ─────────────────────────────────────────────
-#   Issuer:  https://cognito-idp.us-west-2.amazonaws.com/us-west-2_R0hOOoYBb
-#   Pool:    qa-kovr-pool (us-west-2_R0hOOoYBb)
-#   ARN:     arn:aws:cognito-idp:us-west-2:650251729525:userpool/us-west-2_R0hOOoYBb
+# ── Cognito (YOUR_COGNITO_USER_POOL) ─────────────────────────────────────────────
+#   Issuer:  https://cognito-idp.us-west-2.amazonaws.com/us-west-2_YOUR_USER_POOL_ID
+#   Pool:    YOUR_COGNITO_USER_POOL (us-west-2_YOUR_USER_POOL_ID)
+#   ARN:     arn:aws:cognito-idp:us-west-2:YOUR_AWS_ACCOUNT_ID:userpool/us-west-2_YOUR_USER_POOL_ID
 #
 # ── Endpoint (all four must match) ─────────────────────────────────────
 #   1. Gateway HTTPS  → helm/_crds/gateway/rascaas-gateway-https.qa.yaml
 #   2. HTTPRoutes     → gateway.hostname below
 #   3. App / OIDC     → APP_BASE_URL, redirectUrl below
-#   4. Cognito client → callback https://rascaas.qa.kovrai.com/oauth2/callback
+#   4. Cognito client → callback https://rascaas.qa.example.com/oauth2/callback
 #
 # ── Before helm upgrade ──────────────────────────────────────────────────
 #   kubectl apply -f _crds/gateway/rascaas-gateway-base.yaml
@@ -22,7 +22,7 @@
 #   kubectl apply -f _crds/csi-driver/
 #   # SM secret rascaas-secrets + IRSA role platform-rascaas must exist first
 #   # (see _crds/csi-driver/README.md). Do not apply plain-secrets.yaml with CSI.
-#   DNS: rascaas.qa.kovrai.com → kubectl get gateway rascaas-gateway -n rascaas
+#   DNS: rascaas.qa.example.com → kubectl get gateway rascaas-gateway -n rascaas
 #
 #   helm dependency update ./rascaas
 #   helm upgrade --install rascaas ./rascaas -n rascaas -f _values/qa-install-values.yaml
@@ -50,12 +50,12 @@ persistence:
 gateway:
   enabled: true
   name: rascaas-gateway
-  hostname: rascaas.qa.kovrai.com
+  hostname: rascaas.qa.example.com
 
 fastapi:
   name: rascaas
   serviceAccountName: rascaas-sa
-  image: 650251729525.dkr.ecr.us-west-2.amazonaws.com/rascaas:0.3.1
+  image: YOUR_AWS_ACCOUNT_ID.dkr.ecr.us-west-2.amazonaws.com/rascaas:0.3.1
   imagePullPolicy: IfNotPresent
   replicas: 1
   port: 8000
@@ -88,20 +88,20 @@ fastapi:
     initialDelaySeconds: 5
     periodSeconds: 10
   env:
-    GITHUB_APP_ID: "3825031"
-    GITHUB_INSTALLATION_ID: "134904362"
-    GITHUB_DISPATCH_REPO: "kovr-ai/platform"
+    GITHUB_APP_ID: "YOUR_GITHUB_APP_ID"
+    GITHUB_INSTALLATION_ID: "YOUR_GITHUB_INSTALLATION_ID"
+    GITHUB_DISPATCH_REPO: "YOUR_ORG/platform"
     GITHUB_DISPATCH_REF: "main"
     DEFAULT_WORKFLOW: "uat-deploy.yml"
     ENVIRONMENT: "production"
     LOG_LEVEL: "INFO"
     # LOG_FORMAT: "json"   # default when ENVIRONMENT=production
-    APP_BASE_URL: "https://rascaas.qa.kovrai.com"
-    OIDC_ISSUER_URL: "https://cognito-idp.us-west-2.amazonaws.com/us-west-2_R0hOOoYBb"
-    OIDC_CLIENT_ID: "46ghm6ijcf2f0rshtasi9tvg8m"
+    APP_BASE_URL: "https://rascaas.qa.example.com"
+    OIDC_ISSUER_URL: "https://cognito-idp.us-west-2.amazonaws.com/us-west-2_YOUR_USER_POOL_ID"
+    OIDC_CLIENT_ID: "YOUR_COGNITO_CLIENT_ID"
     TRUST_OAUTH2_PROXY_IDENTITY: "true"
     # Cognito Hosted UI logout so Sign out does not silently SSO back in
-    OIDC_LOGOUT_URL: "https://qa-kovr.auth.us-west-2.amazoncognito.com/logout?client_id=46ghm6ijcf2f0rshtasi9tvg8m&logout_uri=https://rascaas.qa.kovrai.com/"
+    OIDC_LOGOUT_URL: "https://YOUR_COGNITO_DOMAIN.auth.us-west-2.amazoncognito.com/logout?client_id=YOUR_COGNITO_CLIENT_ID&logout_uri=https://rascaas.qa.example.com/"
     # Redis deployment locks (SET NX EX 8d). Chart: helm-charts/external/test/redis/
     REDIS_HOST: "rascaas-redis-master.rascaas.svc.cluster.local"
     DEPLOY_LOCK_TTL_S: "691200"
@@ -117,9 +117,9 @@ oauth2proxy:
   secretName: oauth2proxy-secret
   clientSecretKey: client-secret
   cookieSecretKey: cookie-secret
-  oidcIssuerUrl: "https://cognito-idp.us-west-2.amazonaws.com/us-west-2_R0hOOoYBb"
-  clientId: "46ghm6ijcf2f0rshtasi9tvg8m"
-  redirectUrl: "https://rascaas.qa.kovrai.com/oauth2/callback"
+  oidcIssuerUrl: "https://cognito-idp.us-west-2.amazonaws.com/us-west-2_YOUR_USER_POOL_ID"
+  clientId: "YOUR_COGNITO_CLIENT_ID"
+  redirectUrl: "https://rascaas.qa.example.com/oauth2/callback"
   cookieSecure: true
   passAccessToken: true
   setXAuthRequest: true
@@ -129,7 +129,7 @@ oauth2proxy:
   # Whitelist Cognito Hosted UI so /oauth2/sign_out?rd=…/logout is allowed
   extraEnv:
     OAUTH2_PROXY_INSECURE_OIDC_ALLOW_UNVERIFIED_EMAIL: "true"
-    OAUTH2_PROXY_WHITELIST_DOMAINS: "qa-kovr.auth.us-west-2.amazoncognito.com"
+    OAUTH2_PROXY_WHITELIST_DOMAINS: "YOUR_COGNITO_DOMAIN.auth.us-west-2.amazoncognito.com"
   resources:
     requests:
       memory: 64Mi
@@ -144,15 +144,15 @@ oauth2proxy:
     initialDelaySeconds: 0
     periodSeconds: 10
 
-# UAT variance images → ECR kovr-uat-temp; CronJob uses dedicated rascaas-uat-ecr-cleanup image.
+# UAT variance images → ECR uat-temp; CronJob uses dedicated rascaas-uat-ecr-cleanup image.
 # Create IAM role with iam/policy-rascaas-uat-temp-ecr-cleanup.json + iam/trust-rascaas-uat-temp-ecr-cleanup.json and set roleArn.
 uatTempEcrCleanup:
   enabled: true
-  repository: kovr-uat-temp
+  repository: uat-temp
   retentionDays: 14
   schedule: "0 3 * * *"
   awsRegion: us-west-2
   dryRun: false
-  roleArn: "arn:aws:iam::650251729525:role/rascaas-uat-temp-ecr-cleanup"
-  image: 650251729525.dkr.ecr.us-west-2.amazonaws.com/rascaas-uat-ecr-cleanup:latest
+  roleArn: "arn:aws:iam::YOUR_AWS_ACCOUNT_ID:role/rascaas-uat-temp-ecr-cleanup"
+  image: YOUR_AWS_ACCOUNT_ID.dkr.ecr.us-west-2.amazonaws.com/rascaas-uat-ecr-cleanup:latest
   imagePullPolicy: IfNotPresent

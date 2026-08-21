@@ -33,9 +33,9 @@ Site with dropdown menu for:
 
 ## Cluster Deployment Flow
 
-Form is filled (button pressed) → GitHub Actions **`uat-deploy.yml`** on **`kovr-ai/platform`** → build **variance** image into ECR **`kovr-uat-temp`** → Helm deploy full stack (`:latest` for all other services) → vCluster / QA.
+Form is filled (button pressed) → GitHub Actions **`uat-deploy.yml`** on **`YOUR_ORG/platform`** → build **variance** image into ECR **`uat-temp`** → Helm deploy full stack (`:latest` for all other services) → vCluster / QA.
 
-A **separate** CronJob image (`rascaas-uat-ecr-cleanup`, see [`ecr-cleanup/`](ecr-cleanup/)) runs on the host and deletes aged tags from `kovr-uat-temp` after **14 calendar days**. It is **not** the RaSCaaS IDP image or pod.
+A **separate** CronJob image (`rascaas-uat-ecr-cleanup`, see [`ecr-cleanup/`](ecr-cleanup/)) runs on the host and deletes aged tags from `uat-temp` after **14 calendar days**. It is **not** the RaSCaaS IDP image or pod.
 
 > **Naming:** local monorepo folder = `platform-testing`; GitHub repository = `platform`.
 
@@ -76,13 +76,13 @@ See `platform-testing/workflows/rascaas/README.md`.
 Set in RaSCaaS `.env` (required for production):
 
 ```env
-GITHUB_DISPATCH_REPO=kovr-ai/platform
+GITHUB_DISPATCH_REPO=YOUR_ORG/platform
 DEFAULT_WORKFLOW=uat-deploy.yml
 ```
 
 RaSCaaS passes `variance_repo` = UI-selected service; the platform workflow checks out that repo, builds one image into the temp ECR repo, deploys the stack with `:latest` for all other services.
 
-GitHub **variables/secrets** live only on **`kovr-ai/platform`**: `ECR_REGISTRY`, `AWS_REGION`, `AWS_DEPLOY_ROLE_ARN` (ECR), optional `AWS_EKS_DEPLOY_ROLE_ARN` (defaults to `DevopsCICDRole` like other QA EKS deploys), optional `EKS_CLUSTER_NAME` / `ECR_UAT_TEMP_REPO`, `NPM_TOKEN`. Host cluster auth is OIDC + `aws eks update-kubeconfig` — **no** kubeconfig secret.
+GitHub **variables/secrets** live only on **`YOUR_ORG/platform`**: `ECR_REGISTRY`, `AWS_REGION`, `AWS_DEPLOY_ROLE_ARN` (ECR), optional `AWS_EKS_DEPLOY_ROLE_ARN` (defaults to `DevopsCICDRole` like other QA EKS deploys), optional `EKS_CLUSTER_NAME` / `ECR_UAT_TEMP_REPO`, `NPM_TOKEN`. Host cluster auth is OIDC + `aws eks update-kubeconfig` — **no** kubeconfig secret.
 
 ## Auth
 
@@ -316,7 +316,7 @@ RaSCaaS serves the UI through **oauth2-proxy** (OIDC login). FastAPI trusts oaut
 | **Redirect URI** | `oauth2proxy.redirectUrl` = `https://<host>/oauth2/callback` |
 | **App URL** | `fastapi.env.APP_BASE_URL` = `https://<host>` |
 
-For QA (`https://rascaas.qa.kovr.ai`), edit [`helm/_values/qa-install-values.yaml`](helm/_values/qa-install-values.yaml) for issuer, client ID, and redirect; put the client secret in `plain-secrets.yaml`.
+For QA (`https://rascaas.qa.example.com`), edit [`helm/_values/qa-install-values.yaml`](helm/_values/qa-install-values.yaml) for issuer, client ID, and redirect; put the client secret in `plain-secrets.yaml`.
 
 #### AWS Cognito (QA)
 
@@ -330,26 +330,26 @@ Format:
 https://cognito-idp.<region>.amazonaws.com/<user-pool-id>
 ```
 
-QA pool for RaSCaaS (`qa-kovr-pool`):
+QA pool for RaSCaaS (`YOUR_COGNITO_USER_POOL`):
 
 ```text
-https://cognito-idp.us-west-2.amazonaws.com/us-west-2_R0hOOoYBb
+https://cognito-idp.us-west-2.amazonaws.com/us-west-2_YOUR_USER_POOL_ID
 ```
 
 | Field | Value |
 |-------|--------|
-| Pool name | `qa-kovr-pool` |
-| User pool ID | `us-west-2_R0hOOoYBb` |
-| ARN | `arn:aws:cognito-idp:us-west-2:650251729525:userpool/us-west-2_R0hOOoYBb` |
+| Pool name | `YOUR_COGNITO_USER_POOL` |
+| User pool ID | `us-west-2_YOUR_USER_POOL_ID` |
+| ARN | `arn:aws:cognito-idp:us-west-2:YOUR_AWS_ACCOUNT_ID:userpool/us-west-2_YOUR_USER_POOL_ID` |
 
 Console: **Amazon Cognito → User pools → *your pool* → User pool overview** — the issuer is shown as the OIDC issuer URL.
 
-CLI (`qa-kovr` profile):
+CLI (`YOUR_QA_CONTEXT` profile):
 
 ```bash
-export AWS_PROFILE=qa-kovr
+export AWS_PROFILE=YOUR_AWS_PROFILE
 export AWS_REGION=us-west-2
-export POOL_ID=us-west-2_R0hOOoYBb   # qa-kovr-pool
+export POOL_ID=us-west-2_YOUR_USER_POOL_ID   # YOUR_COGNITO_USER_POOL
 
 echo "https://cognito-idp.${AWS_REGION}.amazonaws.com/${POOL_ID}"
 ```
@@ -362,8 +362,8 @@ Console: **User pool → App integration → App clients → Create app client**
 |---------|--------|
 | App type | Traditional web application (or SPA if your standard) |
 | OAuth 2.0 grant types | **Authorization code grant** |
-| Allowed callback URLs | `https://rascaas.qa.kovr.ai/oauth2/callback` |
-| Allowed sign-out URLs | `https://rascaas.qa.kovrai.com/` (must match `logout_uri` in `OIDC_LOGOUT_URL`) |
+| Allowed callback URLs | `https://rascaas.qa.example.com/oauth2/callback` |
+| Allowed sign-out URLs | `https://rascaas.qa.example.com/` (must match `logout_uri` in `OIDC_LOGOUT_URL`) |
 | OpenID Connect scopes | `openid`, `email` (add `profile` if needed) |
 | Client secret | Generate a secret (required for oauth2-proxy) |
 
@@ -376,14 +376,14 @@ Set **the same issuer** in both places:
 ```yaml
 fastapi:
   env:
-    OIDC_ISSUER_URL: "https://cognito-idp.us-west-2.amazonaws.com/us-west-2_R0hOOoYBb"
+    OIDC_ISSUER_URL: "https://cognito-idp.us-west-2.amazonaws.com/us-west-2_YOUR_USER_POOL_ID"
     OIDC_CLIENT_ID: "<your-cognito-app-client-id>"
-    APP_BASE_URL: "https://rascaas.qa.kovr.ai"
+    APP_BASE_URL: "https://rascaas.qa.example.com"
 
 oauth2proxy:
-  oidcIssuerUrl: "https://cognito-idp.us-west-2.amazonaws.com/us-west-2_R0hOOoYBb"
+  oidcIssuerUrl: "https://cognito-idp.us-west-2.amazonaws.com/us-west-2_YOUR_USER_POOL_ID"
   clientId: "<your-cognito-app-client-id>"
-  redirectUrl: "https://rascaas.qa.kovr.ai/oauth2/callback"
+  redirectUrl: "https://rascaas.qa.example.com/oauth2/callback"
 ```
 
 **4. Set the client secret in Kubernetes** (not Helm)
@@ -410,9 +410,9 @@ helm upgrade --install rascaas ./helm/rascaas -n rascaas \
 
 **6. Verify**
 
-- Browser: open `https://rascaas.qa.kovr.ai` → redirect to Cognito → back to the app after login.
+- Browser: open `https://rascaas.qa.example.com` → redirect to Cognito → back to the app after login.
 - If login fails: check oauth2-proxy logs (`kubectl logs -n rascaas -l app.kubernetes.io/component=oauth2-proxy`) for redirect URI mismatch or invalid client secret.
-- Cognito callback URL must match **exactly** (scheme, host, path): `https://rascaas.qa.kovr.ai/oauth2/callback`.
+- Cognito callback URL must match **exactly** (scheme, host, path): `https://rascaas.qa.example.com/oauth2/callback`.
 
 #### Other IdPs (Keycloak, etc.)
 
@@ -459,7 +459,7 @@ Complete [OIDC / oauth2-proxy (EKS)](#oidc--oauth2-proxy-eks) before Helm if usi
 
 ### Helm install
 
-**QA overlay** (`https://rascaas.qa.kovr.ai`): [`helm/_values/qa-install-values.yaml`](helm/_values/qa-install-values.yaml) — Gateway: [`helm/_crds/gateway/rascaas-gateway-https.qa.yaml`](helm/_crds/gateway/rascaas-gateway-https.qa.yaml). Cognito per [OIDC / oauth2-proxy (EKS)](#oidc--oauth2-proxy-eks).
+**QA overlay** (`https://rascaas.qa.example.com`): [`helm/_values/qa-install-values.yaml`](helm/_values/qa-install-values.yaml) — Gateway: [`helm/_crds/gateway/rascaas-gateway-https.qa.yaml`](helm/_crds/gateway/rascaas-gateway-https.qa.yaml). Cognito per [OIDC / oauth2-proxy (EKS)](#oidc--oauth2-proxy-eks).
 
 ```bash
 helm upgrade --install rascaas ./helm/rascaas -n rascaas \

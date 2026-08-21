@@ -6,7 +6,7 @@ Retention uses calendar days (UTC midnight today minus RETENTION_DAYS), not a
 rolling hour window. Only ECR_UAT_TEMP_REPO is touched.
 
 Env:
-  ECR_UAT_TEMP_REPO  — repository name (default: kovr-uat-temp)
+  ECR_UAT_TEMP_REPO  — repository name (default: uat-temp)
   AWS_REGION         — region for the ECR API
   RETENTION_DAYS     — calendar days to keep (default: 14)
   DRY_RUN            — if "1"/"true", log deletions without calling BatchDeleteImage
@@ -104,7 +104,7 @@ def main() -> int:
         format="%(asctime)s %(levelname)s %(message)s",
         stream=sys.stdout,
     )
-    repository = os.environ.get("ECR_UAT_TEMP_REPO", "kovr-uat-temp").strip()
+    repository = os.environ.get("ECR_UAT_TEMP_REPO", "uat-temp").strip()
     region = os.environ.get("AWS_REGION") or os.environ.get("AWS_DEFAULT_REGION") or "us-west-2"
     retention_days = int(os.environ.get("RETENTION_DAYS", "14"))
     dry_run = _env_bool("DRY_RUN", False)

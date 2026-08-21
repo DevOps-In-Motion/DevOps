@@ -8,7 +8,7 @@ class Settings(BaseSettings):
     github_installation_id: str = "0"
     github_private_key: str = ""  # PEM contents; empty = mock GitHub API in dev
     # GitHub platform repo (owner/repo) where uat-deploy.yml runs. Local path: platform-testing/; GitHub name: platform.
-    # Production: kovr-ai/platform. variance_repo input = UI-selected service. Empty = legacy dispatch on selected repo.
+    # Production: YOUR_ORG/platform. variance_repo input = UI-selected service. Empty = legacy dispatch on selected repo.
     github_dispatch_repo: str = ""
     # Branch/tag of the *platform* repo that contains uat-deploy.yml (not the variance service branch).
     github_dispatch_ref: str = "main"

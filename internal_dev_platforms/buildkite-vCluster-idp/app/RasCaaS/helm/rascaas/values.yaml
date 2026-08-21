@@ -50,7 +50,7 @@ secrets:
   fastapiSecretProviderClass: rascaas-fastapi-secrets-provider
   oauth2proxySecretProviderClass: oauth2proxy-secrets-provider
   # Annotate SAs with the same ARN (_crds/service-accounts/).
-  irsaRoleArn: "arn:aws:iam::650251729525:role/platform-rascaas"
+  irsaRoleArn: "arn:aws:iam::YOUR_AWS_ACCOUNT_ID:role/platform-rascaas"
   mountPath: /mnt/secrets-store
 
 gateway:
@@ -171,7 +171,7 @@ oauth2proxy:
 # IRSA on the cleanup SA — do not grant ECR delete to the FastAPI secrets-reader role.
 uatTempEcrCleanup:
   enabled: false
-  repository: kovr-uat-temp
+  repository: uat-temp
   retentionDays: 14
   schedule: "0 3 * * *"
   successfulJobsHistoryLimit: 3
@@ -181,7 +181,7 @@ uatTempEcrCleanup:
   awsRegion: us-west-2
   # Empty = create SA named <release>-uat-temp-ecr-cleanup
   serviceAccountName: ""
-  # IRSA role ARN for ECR delete on kovr-uat-temp only
+  # IRSA role ARN for ECR delete on uat-temp only
   roleArn: ""
   # Required when enabled — rascaas-uat-ecr-cleanup image (not fastapi.image)
   image: ""

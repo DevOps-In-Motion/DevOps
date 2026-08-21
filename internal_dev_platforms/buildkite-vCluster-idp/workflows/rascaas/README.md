@@ -5,7 +5,7 @@
 | Context | Name |
 |---------|------|
 | Local clone / paths in this monorepo | **`platform-testing`** |
-| GitHub (Actions, `GITHUB_DISPATCH_REPO`, `gh`) | **`platform`** → `kovr-ai/platform` |
+| GitHub (Actions, `GITHUB_DISPATCH_REPO`, `gh`) | **`platform`** → `YOUR_ORG/platform` |
 
 All UAT automation runs on the **GitHub `platform` repo**. Service repos (bff, ds, ai-workers, …) do **not** host UAT build/deploy workflows.
 
@@ -18,7 +18,7 @@ All UAT automation runs on the **GitHub `platform` repo**. Service repos (bff, d
 
 ## Variance catalog (`stack-services.yaml`)
 
-| GitHub repo (`kovr-ai/…`) | Helm key | Notes |
+| GitHub repo (`YOUR_ORG/…`) | Helm key | Notes |
 |---------------------------|----------|--------|
 | `bff-service-backend` | `bff-backend` | Needs `NPM_TOKEN` |
 | `ds` | `ds-service` | |
@@ -27,7 +27,7 @@ All UAT automation runs on the **GitHub `platform` repo**. Service repos (bff, d
 | `frontend-app` | `frontend-app` | |
 | `kovr-resource-collector` | `kovr-resource-collector` | Default branch **`prod-deploy`** (not `main`) |
 
-Not buildable: `ai-app-server` (no `kovr-ai/ai-app-server` repo), `askai`, `platform`, `RasCaaS`, `helm-charts`.
+Not buildable: `ai-app-server` (no `YOUR_ORG/ai-app-server` repo), `askai`, `platform`, `RasCaaS`, `helm-charts`.
 
 All service repos are **private**. `uat-deploy` checkouts use **`IMPORT_APP_ID` / `IMPORT_APP_PRIVATE_KEY`** (GitHub App token) — plain `GITHUB_TOKEN` returns “Repository not found” for cross-repo private clones.
 
@@ -48,21 +48,21 @@ All service repos are **private**. `uat-deploy` checkouts use **`IMPORT_APP_ID` 
 | `workflows/rascaas/stack-services.yaml` | Repo name → Helm key / ECR image |
 | `workflows/rascaas/render_uat_overlay.py` | Helm overlay (variance temp image + others `:latest`) |
 | `workflows/rascaas/sanitize_vcluster_name.py` | → `tmp-<reponame>-<branch>` (ns + release) |
-| `workflows/rascaas/uat_route53.py` | Ephemeral DNS upsert/delete: `{vcluster}.uat.kovrai.com` → shared QA ALB |
+| `workflows/rascaas/uat_route53.py` | Ephemeral DNS upsert/delete: `{vcluster}.uat.example.com` → shared QA ALB |
 | `workflows/rascaas/parse_ttl.py` | `72h` → seconds |
 | `workflows/rascaas/render_vcluster_cleanup_job.py` | Host TTL cleanup Job (DNS + vCluster delete) |
 | `workflows/rascaas/rascaas_notify.py` | POST progress to RaSCaaS `/api/runner/events` |
-| **`kovr-ai/helm-charts`** (checked out @ branch) | Umbrella chart `kovr/` + baseline `values.yaml` |
+| **`YOUR_ORG/helm-charts`** (checked out @ branch) | Umbrella chart `app/` + baseline `values.yaml` |
 
 ## RaSCaaS env
 
 ```env
-GITHUB_DISPATCH_REPO=kovr-ai/platform
+GITHUB_DISPATCH_REPO=YOUR_ORG/platform
 GITHUB_DISPATCH_REF=main
 DEFAULT_WORKFLOW=uat-deploy.yml
 ```
 
-Dispatch inputs: `variance_repo`, `branch`, `ttl`, `reason`, `linear_ticket`, `vcluster_name` (optional), `helm_charts_repo` (default `kovr-ai/helm-charts`), `helm_charts_branch` (default **`create-kovr-parent-chart`** — not the variance branch), plus optional RaSCaaS callback fields below.
+Dispatch inputs: `variance_repo`, `branch`, `ttl`, `reason`, `linear_ticket`, `vcluster_name` (optional), `helm_charts_repo` (default `YOUR_ORG/helm-charts`), `helm_charts_branch` (default **`main`** — not the variance branch), plus optional RaSCaaS callback fields below.
 
 ### RaSCaaS progress callback
 
@@ -91,13 +91,13 @@ python3 workflows/rascaas/rascaas_notify.py \
 
 ### Deploy job flow
 
-1. Resolve catalog + sanitize vCluster name (`tmp-<branch>`) + resolve **helm-charts branch** (`create-kovr-parent-chart`)
-2. Checkout **only the variance service repo** @ selected branch → build & push to **`${ECR}/kovr-uat-temp:ras-<image>-<branch>-<sha>`** (temp repo; not permanent service repos)
-3. Checkout **`kovr-ai/helm-charts` @ `create-kovr-parent-chart`** → `helm dependency update`
+1. Resolve catalog + sanitize vCluster name (`tmp-<branch>`) + resolve **helm-charts branch** (`main`)
+2. Checkout **only the variance service repo** @ selected branch → build & push to **`${ECR}/uat-temp:ras-<image>-<branch>-<sha>`** (temp repo; not permanent service repos)
+3. Checkout **`YOUR_ORG/helm-charts` @ `main`** → `helm dependency update`
 4. Create/connect vCluster on the host
 5. Helm install: overlay sets **variance = temp image URI**, **all other stack services = `:latest`**
 6. Optional TTL Job → `vcluster delete`
-7. Host CronJob (`rascaas-uat-ecr-cleanup` image) deletes digests in `kovr-uat-temp` older than **14 calendar days**
+7. Host CronJob (`rascaas-uat-ecr-cleanup` image) deletes digests in `uat-temp` older than **14 calendar days**
 
 ### API / SDK notes (verified)
 
@@ -112,7 +112,7 @@ python3 workflows/rascaas/rascaas_notify.py \
 
 - Platform-only workflow (no per-service UAT pipelines)
 - Deterministic identity: **`tmp-<reponame>-<branch>`** = host namespace **and** vCluster Helm release (**one** virtual cluster per namespace). Never pack multiple UAT envs into a shared `vcluster` ns.
-- Ephemeral DNS: `{tmp-…}.uat.kovrai.com` A-alias → shared QA ALB (`uat_route53.py`). Needs ACM `*.uat.kovrai.com` + host HTTPRoute into the vCluster for HTTPS end-to-end. TTL cleanup deletes the record when `UAT_ROUTE53_ROLE_ARN` IRSA is set.
+- Ephemeral DNS: `{tmp-…}.uat.example.com` A-alias → shared QA ALB (`uat_route53.py`). Needs ACM `*.uat.example.com` + host HTTPRoute into the vCluster for HTTPS end-to-end. TTL cleanup deletes the record when `UAT_ROUTE53_ROLE_ARN` IRSA is set.
 - Concurrency group per vCluster name (no parallel double-deploys)
 - SQLite gate + live cluster check before dispatch (`409` unless `force`)
 - TTL cleanup Job on host
@@ -120,16 +120,16 @@ python3 workflows/rascaas/rascaas_notify.py \
 - Least-privilege workflow `permissions`
 - Pin vCluster CLI (`v0.22.1`) to match cleanup image
 
-## GitHub configuration (`kovr-ai/platform` only)
+## GitHub configuration (`YOUR_ORG/platform` only)
 
 | Type | Name | Value / notes |
 |------|------|----------------|
-| Variable | `ECR_REGISTRY` | `650251729525.dkr.ecr.us-west-2.amazonaws.com` |
+| Variable | `ECR_REGISTRY` | `YOUR_AWS_ACCOUNT_ID.dkr.ecr.us-west-2.amazonaws.com` |
 | Variable | `AWS_REGION` | `us-west-2` |
-| Variable | `EKS_CLUSTER_NAME` | optional; default `qa-kovr-app-cluster` |
-| Variable | `ECR_UAT_TEMP_REPO` | optional; default `kovr-uat-temp` |
-| Secret | `AWS_DEPLOY_ROLE_ARN` | `arn:aws:iam::650251729525:role/GithubBackendDeployRole` (ECR push) |
-| Secret | `AWS_EKS_DEPLOY_ROLE_ARN` | optional; default `arn:aws:iam::650251729525:role/DevopsCICDRole` (same as QA `deploy-*-eks.yml`) |
+| Variable | `EKS_CLUSTER_NAME` | optional; default `YOUR_EKS_CLUSTER` |
+| Variable | `ECR_UAT_TEMP_REPO` | optional; default `uat-temp` |
+| Secret | `AWS_DEPLOY_ROLE_ARN` | `arn:aws:iam::YOUR_AWS_ACCOUNT_ID:role/GithubBackendDeployRole` (ECR push) |
+| Secret | `AWS_EKS_DEPLOY_ROLE_ARN` | optional; default `arn:aws:iam::YOUR_AWS_ACCOUNT_ID:role/DevopsCICDRole` (same as QA `deploy-*-eks.yml`) |
 | Secret | `IMPORT_APP_ID` / `IMPORT_APP_PRIVATE_KEY` | GitHub App for private checkout of variance + `helm-charts` |
 | Secret | `NPM_TOKEN` | Optional fallback for BFF; prefer AWS SM `global/github/npm-token` (same as BFF deploy) |
 
@@ -137,7 +137,7 @@ python3 workflows/rascaas/rascaas_notify.py \
 
 | SM secret | Purpose |
 |-----------|---------|
-| `global/Chainguard/Credentials` | `username`/`password` → `podman`/`docker login cgr.dev` (private `cgr.dev/kovr.ai/*` bases) |
+| `global/Chainguard/Credentials` | `username`/`password` → `podman`/`docker login cgr.dev` (private `cgr.dev/YOUR_ORG/*` bases) |
 | `global/github/npm-token` | `{ "token": "…" }` for BFF `npm.pkg.github.com` |
 
 **Cluster auth** matches other QA EKS workflows: OIDC → `DevopsCICDRole` → `aws eks update-kubeconfig`. No kubeconfig secret.

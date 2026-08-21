@@ -1,7 +1,7 @@
 # Build & push RaSCaaS host images:
 #   - rascaas              — IDP UI
-#   - rascaas-uat-ecr-cleanup — CronJob that GC's kovr-uat-temp (separate image)
-# GitHub repo: kovr-ai/platform (local: platform-testing/).
+#   - rascaas-uat-ecr-cleanup — CronJob that GC's uat-temp (separate image)
+# GitHub repo: YOUR_ORG/platform (local: platform-testing/).
 # Trigger: workflow_dispatch only (RaSCaaS / Actions UI webhook) — never on push.
 # Deploy to the host with Helm separately (see RasCaaS/README.md).
 

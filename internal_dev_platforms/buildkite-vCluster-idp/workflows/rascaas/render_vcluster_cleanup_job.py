@@ -183,7 +183,7 @@ def main() -> int:
     )
     parser.add_argument("--vcluster-cli-version", default="v0.22.1")
     parser.add_argument("--uat-dns-zone-id", default="")
-    parser.add_argument("--uat-dns-zone", default="uat.kovrai.com")
+    parser.add_argument("--uat-dns-zone", default="uat.example.com")
     parser.add_argument("--uat-alb-dns", default="")
     parser.add_argument("--uat-alb-hosted-zone-id", default="Z1H1FL5HABSF5")
     parser.add_argument("--uat-public-hostname", default="")

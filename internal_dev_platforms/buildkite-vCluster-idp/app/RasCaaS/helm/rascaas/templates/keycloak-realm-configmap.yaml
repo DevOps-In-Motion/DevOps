@@ -34,7 +34,7 @@ data:
           "emailVerified": true,
           "firstName": "Dev",
           "lastName": "Operator",
-          "email": "dev@kovr.ai",
+          "email": "dev@example.com",
           "credentials": [
             {
               "type": "password",

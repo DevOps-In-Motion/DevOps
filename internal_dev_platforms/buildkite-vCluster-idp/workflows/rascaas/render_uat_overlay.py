@@ -41,7 +41,7 @@ def main() -> int:
     parser.add_argument(
         "--variance-image",
         required=True,
-        help="Full variance image URI (registry/kovr-uat-temp:ras-<image>-<branch>-<sha>)",
+        help="Full variance image URI (registry/uat-temp:ras-<image>-<branch>-<sha>)",
     )
     parser.add_argument("--registry", required=True, help="ECR registry host (no trailing slash)")
     parser.add_argument("--output", type=Path, required=True)

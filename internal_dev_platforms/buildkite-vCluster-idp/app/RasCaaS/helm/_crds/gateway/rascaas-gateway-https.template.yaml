@@ -1,5 +1,5 @@
 # Phase 2 — add HTTPS listener (:443) to rascaas-gateway (non-QA hosts).
-# QA uses rascaas-gateway-https.qa.yaml instead (hostname rascaas.qa.kovrai.com).
+# QA uses rascaas-gateway-https.qa.yaml instead (hostname rascaas.qa.example.com).
 #
 #   export RASCAAS_HOST=rascaas.example.com
 #   export IAM_CERT_ARN=arn:aws:acm:us-west-2:ACCOUNT:certificate/UUID

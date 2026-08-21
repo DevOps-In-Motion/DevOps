@@ -5,7 +5,7 @@
 | File | When to apply |
 |------|----------------|
 | [`rascaas-gateway-base.yaml`](rascaas-gateway-base.yaml) | First — HTTP :80, TargetGroupConfiguration, LoadBalancerConfiguration |
-| [`rascaas-gateway-https.qa.yaml`](rascaas-gateway-https.qa.yaml) | QA — HTTPS :443, hostname `rascaas.qa.kovrai.com` + ACM `*.qa.kovrai.com` |
+| [`rascaas-gateway-https.qa.yaml`](rascaas-gateway-https.qa.yaml) | QA — HTTPS :443, hostname `rascaas.qa.example.com` + ACM `*.qa.example.com` |
 | [`rascaas-gateway-https.template.yaml`](rascaas-gateway-https.template.yaml) | Other envs — `sed` placeholders `__RASCAAS_GATEWAY_HOSTNAME__`, `__IAM_SERVER_CERT_ARN__` |
 
 ## LBC attach (required on LBC v3.4 / QA)
@@ -17,7 +17,7 @@ Do **not** rely on annotation `gateway.k8s.aws/load-balancer-configuration` alon
 ## QA apply order
 
 ```bash
-cd ~/githubRepos/kovr/platform-testing/RasCaaS
+cd ./app/RasCaaS
 
 # After Gateway API CRDs + namespace rascaas (see ../README.md under _crds/)
 
@@ -28,21 +28,21 @@ kubectl get gateway rascaas-gateway -n rascaas -w
 # Expect ADDRESS without "internal-" prefix and Scheme=internet-facing
 ```
 
-Point **DNS** `rascaas.qa.kovrai.com` at the ALB address in `status.addresses`.
+Point **DNS** `rascaas.qa.example.com` at the ALB address in `status.addresses`.
 
 ## Must match Helm (`helm/_values/qa-install-values.yaml`)
 
 | Layer | Field |
 |-------|--------|
-| Gateway HTTPS listener | `hostname: rascaas.qa.kovrai.com` (in `rascaas-gateway-https.qa.yaml`) |
-| HTTPRoutes | `gateway.hostname: rascaas.qa.kovrai.com` |
+| Gateway HTTPS listener | `hostname: rascaas.qa.example.com` (in `rascaas-gateway-https.qa.yaml`) |
+| HTTPRoutes | `gateway.hostname: rascaas.qa.example.com` |
 | oauth2-proxy / FastAPI | `APP_BASE_URL`, `redirectUrl` |
-| Cognito app client | Allowed callback `https://rascaas.qa.kovrai.com/oauth2/callback` |
+| Cognito app client | Allowed callback `https://rascaas.qa.example.com/oauth2/callback` |
 
 Then install the chart:
 
 ```bash
-cd ~/githubRepos/kovr/platform-testing/RasCaaS/helm
+cd ./app/RasCaaS/helm
 
 helm upgrade --install rascaas ./rascaas -n rascaas -f _values/qa-install-values.yaml
 ```
@@ -75,7 +75,7 @@ After Helm + HTTPRoutes settle, the **HTTPS** listener on the rascaas ALB must l
 #### Check
 
 ```bash
-export AWS_PROFILE=qa-kovr AWS_REGION=us-west-2
+export AWS_PROFILE=YOUR_AWS_PROFILE AWS_REGION=us-west-2
 LB_ARN=$(aws elbv2 describe-load-balancers \
   --query "LoadBalancers[?contains(LoadBalancerName,'rascaas')].LoadBalancerArn" --output text)
 HTTPS=$(aws elbv2 describe-listeners --load-balancer-arn "$LB_ARN" \
@@ -102,7 +102,7 @@ Expect a row with `/api/runner` (and `/api/runner/*`) on the **rascaasa** (FastA
 HTTPRoute `rascaas-api-route` already declares `/api/runner`; LBC sometimes never materializes that ALB rule (priority / `SetRulePriorities` gaps). Create it by hand:
 
 ```bash
-export AWS_PROFILE=qa-kovr AWS_REGION=us-west-2
+export AWS_PROFILE=YOUR_AWS_PROFILE AWS_REGION=us-west-2
 LB_ARN=$(aws elbv2 describe-load-balancers \
   --query "LoadBalancers[?contains(LoadBalancerName,'rascaas')].LoadBalancerArn" --output text)
 HTTPS=$(aws elbv2 describe-listeners --load-balancer-arn "$LB_ARN" \
@@ -126,7 +126,7 @@ aws elbv2 create-rule \
   --listener-arn "$HTTPS" \
   --priority 3 \
   --conditions \
-    'Field=host-header,HostHeaderConfig={Values=[rascaas.qa.kovrai.com]}' \
+    'Field=host-header,HostHeaderConfig={Values=[rascaas.qa.example.com]}' \
     'Field=path-pattern,PathPatternConfig={Values=[/api/runner,/api/runner/*]}' \
   --actions "Type=forward,TargetGroupArn=$TG"
 ```
@@ -147,11 +147,11 @@ If the HTTPRoute was fixed but the browser still gets FastAPI’s “Not authent
 Check:
 
 ```bash
-LB_ARN=$(aws elbv2 describe-load-balancers --profile qa-kovr --region us-west-2 \
+LB_ARN=$(aws elbv2 describe-load-balancers --profile YOUR_AWS_PROFILE --region us-west-2 \
   --query "LoadBalancers[?contains(LoadBalancerName,'rascaas')].LoadBalancerArn" --output text)
-HTTPS=$(aws elbv2 describe-listeners --load-balancer-arn "$LB_ARN" --profile qa-kovr --region us-west-2 \
+HTTPS=$(aws elbv2 describe-listeners --load-balancer-arn "$LB_ARN" --profile YOUR_AWS_PROFILE --region us-west-2 \
   --query "Listeners[?Port==\`443\`].ListenerArn" --output text)
-aws elbv2 describe-rules --listener-arn "$HTTPS" --profile qa-kovr --region us-west-2 \
+aws elbv2 describe-rules --listener-arn "$HTTPS" --profile YOUR_AWS_PROFILE --region us-west-2 \
   --query 'Rules[?!IsDefault].[Priority,Conditions[?Field==`path-pattern`].Values]' --output table
 ```
 
@@ -160,19 +160,19 @@ Expect **no** `/api/repos` / `/api/branches` / `/api/trigger` rules (only `/oaut
 Delete stale rules (replace ARNs from describe-rules), then hard-refresh the app:
 
 ```bash
-aws elbv2 delete-rule --rule-arn '<listener-rule-arn>' --profile qa-kovr --region us-west-2
+aws elbv2 delete-rule --rule-arn '<listener-rule-arn>' --profile YOUR_AWS_PROFILE --region us-west-2
 ```
 
 Prevent recurrence — from `platform-testing/RasCaaS/iam`:
 
 ```bash
-cd ~/githubRepos/kovr/platform-testing/RasCaaS/iam
+cd ./app/RasCaaS/iam
 
 aws iam put-role-policy \
-  --role-name qa-kovr-app-cluster-lb-controller-role \
+  --role-name YOUR_EKS_CLUSTER-lb-controller-role \
   --policy-name rascaas-lbc-set-rule-priorities \
-  --policy-document file://policy-qa-kovr-lbc-set-rule-priorities.json \
-  --profile qa-kovr
+  --policy-document file://policy-lbc-set-rule-priorities.json \
+  --profile YOUR_AWS_PROFILE
 ```
 
-See [`../../../iam/README.md`](../../../iam/README.md) and [`../../../iam/policy-qa-kovr-lbc-set-rule-priorities.json`](../../../iam/policy-qa-kovr-lbc-set-rule-priorities.json).
+See [`../../../iam/README.md`](../../../iam/README.md) and [`../../../iam/policy-lbc-set-rule-priorities.json`](../../../iam/policy-lbc-set-rule-priorities.json).

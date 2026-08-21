@@ -10,7 +10,7 @@
 # → FastAPI with priority BEFORE catch-all /* → oauth2 (see
 # helm/_crds/gateway/README.md § Required ALB listener rules). Also confirm
 # no stale /api/repos|/api/branches|/api/trigger rules (LBC needs
-# SetRulePriorities — see iam/policy-qa-kovr-lbc-set-rule-priorities.json).
+# SetRulePriorities — see iam/policy-lbc-set-rule-priorities.json).
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:

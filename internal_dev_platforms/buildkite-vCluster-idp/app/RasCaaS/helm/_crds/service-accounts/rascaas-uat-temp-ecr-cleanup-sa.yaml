@@ -10,4 +10,4 @@ metadata:
     app.kubernetes.io/name: rascaas
     app.kubernetes.io/component: uat-temp-ecr-cleanup
   annotations:
-    eks.amazonaws.com/role-arn: arn:aws:iam::650251729525:role/rascaas-uat-temp-ecr-cleanup
+    eks.amazonaws.com/role-arn: arn:aws:iam::YOUR_AWS_ACCOUNT_ID:role/rascaas-uat-temp-ecr-cleanup
