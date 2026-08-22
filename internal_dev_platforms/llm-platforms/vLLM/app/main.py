@@ -1,6 +1,6 @@
-"""Deprecated entrypoint — see ray_batch_inference/."""
+"""Deprecated entrypoint — see agent-solutions/LLM-hosting/ray_batch_inference/."""
 
 raise SystemExit(
-    "app.main is deprecated. Use:\n"
-    "  cd ../ray_batch_inference && ./scripts/run-local.sh"
+    "Moved to agent-solutions/LLM-hosting/ray_batch_inference/\n"
+    "  cd agent-solutions/LLM-hosting/ray_batch_inference && ./scripts/run-local.sh"
 )

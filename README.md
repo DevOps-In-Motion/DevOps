@@ -7,6 +7,7 @@ Welcome to DevOps-In-Motion! This repository contains a collection of DevOps pro
 - [Overview](#overview)
 - [Projects](#projects)
   - [Internal Developer Platforms](#internal-developer-platforms)
+  - [Agent Solutions](#agent-solutions)
   - [Buildkite & Octopus Deploy](#buildkite--octopus-deploy)
   - [High Availability GKE](#high-availability-gke)
   - [Multi-Tenant Jenkins on EKS](#multi-tenant-jenkins-on-eks)
@@ -37,13 +38,26 @@ This repository serves as a comprehensive collection of DevOps projects and auto
 
 **Location**: [`internal_dev_platforms/`](internal_dev_platforms/)
 
-Hands-on IDP experiments: ephemeral environments, containerized platforms, and LLM serving patterns.
+Hands-on IDP experiments: ephemeral environments, containerized platforms, and speech tooling.
 
 | Project | Description |
 |---------|-------------|
 | [`buildkite-vCluster-idp/`](internal_dev_platforms/buildkite-vCluster-idp/) | RaSCaaS IDP that spins up ephemeral vClusters for QA/UAT from a UI, with GitHub Actions, Helm, and TTL cleanup. |
 | [`dind/`](internal_dev_platforms/dind/) | Docker-in-Docker IDP demo that runs a FastAPI + PostgreSQL wiki API (Helm chart) inside a k3d cluster in a privileged container. |
-| [`llm-platforms/`](internal_dev_platforms/llm-platforms/) | LLM platform work, including Ray Data + vLLM batch inference ([`vLLM/ray_batch_inference/`](internal_dev_platforms/llm-platforms/vLLM/ray_batch_inference/)) for scalable offline generation. |
+| [`text-to-speech/`](internal_dev_platforms/text-to-speech/) | Live speech translation experiments (e.g. AssemblyAI). |
+
+---
+
+### Agent Solutions
+
+**Location**: [`agent-solutions/`](agent-solutions/)
+
+Agent-oriented platforms and LLM hosting patterns.
+
+| Project | Description |
+|---------|-------------|
+| [`LLM-hosting/`](agent-solutions/LLM-hosting/) | LLM hosting at scale — Ray Data + vLLM batch inference ([`ray_batch_inference/`](agent-solutions/LLM-hosting/ray_batch_inference/)), small-model local defaults, Databricks AIR path for scale. |
+| [`multi-rag-platform/`](agent-solutions/multi-rag-platform/) | Multi-RAG platform with Go services, MCP, and observability. |
 
 ---
 
@@ -339,11 +353,12 @@ Site Reliability Engineering documentation, practices, and guidelines.
 
 ```
 DevOps/
+├── agent-solutions/         # Agent platforms, LLM hosting (vLLM + Ray)
 ├── buildkite--octopus/      # CI/CD with Buildkite & Octopus
 ├── buildkite--platform/     # Frontend platform
 ├── high-availability/       # GKE production configurations
 ├── homelab/                 # Personal lab environment
-├── internal_dev_platforms/  # IDP projects (vCluster, DinD, LLM)
+├── internal_dev_platforms/  # IDP projects (vCluster, DinD, TTS)
 ├── LLM-API/                 # Ollama on AWS
 ├── minikube-cheatsheet/     # Local K8s development
 ├── multi-tenant-moderncloud/ # Multi-tenant Jenkins on EKS

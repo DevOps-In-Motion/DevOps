@@ -1,14 +1,6 @@
-"""Deprecated stub.
-
-Use the Ray Data + vLLM scaffold instead:
-
-  internal_dev_platforms/llm-platforms/vLLM/ray_batch_inference/
-
-See ray_batch_inference/README.md (Databricks AIR batch-inference pattern,
-small-model defaults for local GPU testing).
-"""
+"""Deprecated stub — Ray batch inference lives under agent-solutions/LLM-hosting."""
 
 raise SystemExit(
-    "app.cluster is deprecated. Run ray_batch_inference/batch_inference.py "
-    "or scripts/run-local.sh under llm-platforms/vLLM/ray_batch_inference/."
+    "Moved to agent-solutions/LLM-hosting/ray_batch_inference/. "
+    "Run: cd agent-solutions/LLM-hosting/ray_batch_inference && ./scripts/run-local.sh"
 )

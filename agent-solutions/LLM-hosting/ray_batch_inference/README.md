@@ -34,7 +34,7 @@ Ray Data launches **one vLLM replica per GPU** (by default) and streams prompts 
 ## Local quickstart
 
 ```bash
-cd internal_dev_platforms/llm-platforms/vLLM/ray_batch_inference
+cd agent-solutions/LLM-hosting/ray_batch_inference
 python -m venv .venv && source .venv/bin/activate
 pip install -U pip
 pip install -r requirements.txt
