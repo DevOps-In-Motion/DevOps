@@ -1,0 +1,27 @@
+# Pinned model deployment identity. Chat template + tokenizer must move with weights.
+# A template change silently changes model input even when API messages are identical.
+model:
+  source: Qwen/Qwen2.5-0.5B-Instruct
+  # Bump together when changing weights / tokenizer / chat template.
+  revision: main
+  tokenizer_revision: main
+  # Explicit chat-template identity (HF default for this model unless overridden).
+  chat_template_version: "qwen2.5-instruct-hf-default@main"
+  dtype: auto
+  max_model_len: 2048
+
+engine:
+  # Automatic Prefix Caching — reuse KV blocks across requests with identical prefixes.
+  enable_prefix_caching: true
+  # Chunked prefill — long prefills must not stall decode for other in-flight requests.
+  enable_chunked_prefill: true
+  tensor_parallel_size: 1
+  gpu_memory_utilization: 0.90
+
+serving:
+  # One AsyncLLMEngine per Ray Serve replica. Continuous batching lives inside the engine.
+  # Ray only routes to a replica; it must not serialize one-request-per-engine-call.
+  max_ongoing_requests_per_replica: 64
+  # Single-tenant batch/demo: cache_salt unused. For multi-tenant online serving set
+  # CACHE_SALT_HMAC_SECRET and pass tenant_id so prefixes are namespaced.
+  multi_tenant: false

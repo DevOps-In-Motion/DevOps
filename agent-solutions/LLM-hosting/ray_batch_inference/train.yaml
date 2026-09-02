@@ -57,5 +57,7 @@ env_variables:
   MAX_MODEL_LEN: "2048"
   MAX_TOKENS: "128"
   TENSOR_PARALLEL_SIZE: "1"
+  ENABLE_PREFIX_CACHING: "true"
+  ENABLE_CHUNKED_PREFILL: "true"
   # Replace with your Unity Catalog volume when running on Databricks.
   OUTPUT_PATH: /Volumes/main/default/air_examples/ray_batch_inference

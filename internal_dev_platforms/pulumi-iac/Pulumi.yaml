@@ -1,0 +1,33 @@
+name: docker-web-app
+description: Configurable Node web app on Amazon EKS
+runtime:
+  name: python
+  options:
+    toolchain: pip
+    virtualenv: venv
+
+# Project-level defaults (matches pulumi-eks template shape: description + default).
+# Provider keys like aws:region belong in the stack file (Pulumi.dev.yaml), not here —
+# templates use `template.config` for those; live projects use Pulumi.<stack>.yaml.
+config:
+  name:
+    description: Greeting shown on the web page (Hello <name>)
+    default: World
+  replicas:
+    description: Number of web app pod replicas
+    default: 2
+  minClusterSize:
+    description: Minimum size (number of nodes) of cluster
+    default: 3
+  maxClusterSize:
+    description: Maximum size (number of nodes) of cluster
+    default: 6
+  desiredClusterSize:
+    description: Desired number of nodes in the cluster
+    default: 3
+  eksNodeInstanceType:
+    description: Instance type to use for worker nodes
+    default: t3.medium
+  vpcNetworkCidr:
+    description: Network CIDR to use for new VPC
+    default: 10.0.0.0/16

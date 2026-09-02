@@ -1,11 +1,10 @@
-# Local / portable Ray Data + vLLM batch inference
-# Pin loosely so pip can resolve for your CUDA/torch stack; tighten for prod.
-ray[data]>=2.47.1
+# Local / portable Ray Data + vLLM (+ Serve path)
+ray[data,serve]>=2.47.1
 vllm>=0.8.5
 datasets>=3.0
 huggingface_hub>=0.34
 hf_transfer
 fsspec>=2024.6.1
-# Avoid OpenCV FIPS issues on some GPU images (Databricks AIR pin)
 opencv-python-headless==4.12.0.88
 numpy>=1.26.4,<2
+PyYAML>=6.0

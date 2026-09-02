@@ -1,0 +1,9 @@
+config:
+  aws:region: us-west-2
+  docker-web-app:name: Pulumi
+  docker-web-app:replicas: "2"
+  docker-web-app:minClusterSize: "1"
+  docker-web-app:maxClusterSize: "2"
+  docker-web-app:desiredClusterSize: "1"
+  docker-web-app:eksNodeInstanceType: t3.medium
+  docker-web-app:vpcNetworkCidr: 10.0.0.0/16

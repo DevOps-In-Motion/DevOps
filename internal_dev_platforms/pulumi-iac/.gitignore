@@ -1,0 +1,9 @@
+venv/
+__pycache__/
+*.pyc
+.pulumi/
+node_modules/
+app/node_modules/
+*.egg-info/
+.DS_Store
+kubeconfig.yaml

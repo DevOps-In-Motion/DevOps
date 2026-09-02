@@ -1,99 +1,65 @@
-# Ray Data + vLLM batch inference
+# Ray Data + vLLM (batch) and Ray Serve (online)
 
-Scaffold of the Databricks [Batch inference with Ray Data and vLLM](https://docs.databricks.com/aws/en/machine-learning/ai-runtime/cli/examples/ray-batch-inference) example, tuned for **small models first** so you can smoke-test locally before scaling to 7B / multi-GPU AIR nodes.
+Scaffold of the Databricks [Batch inference with Ray Data and vLLM](https://docs.databricks.com/aws/en/machine-learning/ai-runtime/cli/examples/ray-batch-inference) example, plus an architecture pass for:
+
+1. **Prefill → decode** awareness (TTFT / ITL on the Serve path)
+2. **Automatic Prefix Caching** + APC-friendly prompt ordering
+3. **Continuous batching** inside one `AsyncLLMEngine` per replica (Ray routes; engine schedules)
+
+See **[`architecture.md`](architecture.md)** for the full design notes and deliverables.
+See **[`GAPS.md`](GAPS.md)** for production gaps and ordered next steps (self-hosted only, customer load).
 
 ## Layout
 
 ```text
 ray_batch_inference/
-├── batch_inference.py   # Driver (ray.data.llm + vLLM)
-├── train.yaml           # Optional Databricks AI Runtime workload
-├── requirements.txt
-├── scripts/run-local.sh # Local Ray head + driver
-└── output/              # Local Parquet (gitignored)
+├── architecture.md          # Prefill/decode, APC, continuous batching
+├── GAPS.md                  # Gaps + next steps (capacity, platform, ops)
+├── model_config.yaml        # Model + tokenizer + chat_template_version + engine flags
+├── config.py / prompts.py / metrics.py
+├── batch_inference.py       # Offline Ray Data + vLLM (APC enabled)
+├── serving/app.py           # Online Ray Serve + AsyncLLMEngine (streaming)
+├── train.yaml               # Optional Databricks AIR workload
+├── scripts/run-local.sh     # Batch local
+├── scripts/run-serve.sh     # Serve local
+├── scripts/bench_prefix_cache.py
+└── output/                  # Local Parquet (gitignored)
 ```
 
-## How it scales
-
-| Setting | Local default | Scale-up example |
-|---------|---------------|------------------|
-| `MODEL_SOURCE` | `Qwen/Qwen2.5-0.5B-Instruct` | `Qwen/Qwen2.5-7B-Instruct` |
-| `NUM_PROMPTS` | `16`–`32` | `1000+` |
-| GPUs / `concurrency` | 1 replica | one replica per GPU (`total_gpus // tensor_parallel_size`) |
-| `TENSOR_PARALLEL_SIZE` | `1` | `2+` for larger models |
-| Output | `./output/batch_inference` | Unity Catalog volume (`OUTPUT_PATH` in `train.yaml`) |
-
-Ray Data launches **one vLLM replica per GPU** (by default) and streams prompts through them via `build_processor` / `vLLMEngineProcessorConfig`.
-
-## Prerequisites
-
-- Linux + NVIDIA GPU (vLLM)
-- Python 3.10+
-- For Databricks AIR: [`air` CLI](https://docs.databricks.com/aws/en/machine-learning/ai-runtime/cli/examples/ray-batch-inference) authenticated + a writable UC volume
-
-## Local quickstart
+## Local batch
 
 ```bash
 cd agent-solutions/LLM-hosting/ray_batch_inference
-python -m venv .venv && source .venv/bin/activate
-pip install -U pip
 pip install -r requirements.txt
-
-chmod +x scripts/run-local.sh
 ./scripts/run-local.sh
 ```
 
-Or step by step:
+## Local Serve (streaming + TTFT/ITL)
 
 ```bash
-ray start --head --num-gpus=1 --dashboard-host=127.0.0.1
-export RAY_ADDRESS=auto
-export MODEL_SOURCE=Qwen/Qwen2.5-0.5B-Instruct
-export NUM_PROMPTS=16
-export OUTPUT_PATH=./output/batch_inference
-python batch_inference.py
-ray stop
+./scripts/run-serve.sh
+# Then POST JSON {"prompt":"What is continuous batching?"} to the Serve HTTP endpoint.
 ```
 
-Inspect Parquet (example):
+## Prefix-cache bench
 
 ```bash
-python -c "import ray; ray.init(); print(ray.data.read_parquet('output/batch_inference').take(2))"
+python scripts/bench_prefix_cache.py
 ```
 
-### Useful env vars
+## Key env vars
 
 | Variable | Meaning |
 |----------|---------|
-| `MODEL_SOURCE` | Hugging Face model id |
-| `NUM_PROMPTS` | Rows from Alpaca (or built-in fallback) |
-| `BATCH_SIZE` | Ray Data / vLLM batch size |
-| `MAX_MODEL_LEN` | vLLM context length |
-| `MAX_TOKENS` | Generation cap |
-| `TENSOR_PARALLEL_SIZE` | GPUs per replica |
-| `CONCURRENCY` | Override replica count (default: GPUs ÷ TP) |
-| `OUTPUT_PATH` | Parquet directory |
-| `RAY_ADDRESS` | Ray cluster address (`auto` if already started) |
-
-## Databricks AIR
-
-1. Set `OUTPUT_PATH` in `train.yaml` to your Unity Catalog volume.
-2. Optionally bump `compute` / `MODEL_SOURCE` when leaving the 0.5B local path.
-3. Submit:
-
-```bash
-air run -f train.yaml --dry-run
-air run -f train.yaml --watch
-```
-
-## Next steps
-
-- Multi-GPU local: `NUM_GPUS=2 ./scripts/run-local.sh` (or higher).
-- Larger model: `MODEL_SOURCE=Qwen/Qwen2.5-7B-Instruct` + more VRAM / TP.
-- Online serving: Ray Serve + vLLM (separate scaffold later).
+| `MODEL_SOURCE` | HF model id (pinned with `chat_template_version` in `model_config.yaml`) |
+| `ENABLE_PREFIX_CACHING` | APC (default true) |
+| `ENABLE_CHUNKED_PREFILL` | Chunked prefill (default true) |
+| `MAX_ONGOING_REQUESTS` | Serve concurrency into one engine (default 64 — do not set to 1) |
+| `NUM_REPLICAS` | Serve replicas (routing is not cache-locality-aware yet) |
+| `MULTI_TENANT` + `CACHE_SALT_HMAC_SECRET` | Server-side prefix namespace |
 
 ## References
 
-- [Databricks: Batch inference with Ray Data and vLLM](https://docs.databricks.com/aws/en/machine-learning/ai-runtime/cli/examples/ray-batch-inference)
-- [Ray Data LLM API](https://docs.ray.io/en/latest/data/api/llm.html)
-- [vLLM](https://docs.vllm.ai/)
+- [Databricks Ray Data + vLLM](https://docs.databricks.com/aws/en/machine-learning/ai-runtime/cli/examples/ray-batch-inference)
+- [vLLM Automatic Prefix Caching](https://docs.vllm.ai/en/latest/features/automatic_prefix_caching.html)
+- [Ray Serve](https://docs.ray.io/en/latest/serve/index.html)

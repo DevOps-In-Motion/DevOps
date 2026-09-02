@@ -6,7 +6,7 @@ Agent-oriented solutions for hosting and scaling LLMs.
 
 | Path | Description |
 |------|-------------|
-| [`ray_batch_inference/`](ray_batch_inference/) | Offline batch inference with **Ray Data + vLLM** (small-model local defaults; Databricks AIR `train.yaml` for scale). |
+| [`ray_batch_inference/`](ray_batch_inference/) | Ray Data batch + Ray Serve online paths for **vLLM**, with prefill/decode metrics, Automatic Prefix Caching, and continuous-batching-aware replica design ([`architecture.md`](ray_batch_inference/architecture.md), [`GAPS.md`](ray_batch_inference/GAPS.md)). |
 
 ```bash
 cd ray_batch_inference
