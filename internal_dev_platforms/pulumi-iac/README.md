@@ -1,16 +1,20 @@
-# Configurable web app on Amazon EKS (Pulumi + Python)
+# Configurable Web App on Amazon EKS (Pulumi + Python)
 
-Deploys a Node.js Express app to a Kubernetes cluster on **AWS EKS**. The greeting on the page comes from **Pulumi config** → pod env `NAME` → `server.js`.
+A fully infrastructure-as-code project that provisions an **AWS EKS** cluster and deploys a containerized Node.js Express application — all managed by **Pulumi** in Python. The app serves a greeting page whose message is driven entirely by `pulumi config`, demonstrating how a single config change flows through to a live web page without rebuilding the container image.
 
-## What's included
+## Key Design Decisions
 
-| Piece | Where |
-| --- | --- |
-| Dockerfile + Node app | `app/` |
-| Pulumi program (Python) | `__main__.py` |
-| `WebApp` **ComponentResource** (Deployment + Service) | `webapp.py` |
-| EKS cluster | `__main__.py` via `pulumi-eks` |
-| Image build/push to ECR | `awsx.ecr.Image` |
+- **`WebApp` ComponentResource** (`webapp.py`) — encapsulates the Kubernetes `Deployment` and `Service` into a single reusable component, making it easy to stamp out additional apps on the same cluster.
+- **Config-driven behavior** — the greeting value is set via `pulumi config set name <value>`, injected as an environment variable into the pod, and read by `server.js` at runtime. Changing it and running `pulumi up` updates the page immediately.
+- **Fully containerized** — a `Dockerfile` in `app/` builds the image; Pulumi automatically builds and pushes it to an **ECR** repository via `awsx.ecr.Image`.
+
+## Project Structure
+
+| Component | Location | Purpose |
+| --- | --- | --- |
+| Dockerfile + Node.js app | `app/` | Serves `Hello ${NAME}` on port 8080 |
+| Pulumi program | `__main__.py` | Provisions EKS cluster, ECR image, and the `WebApp` component |
+| `WebApp` ComponentResource | `webapp.py` | Reusable component wrapping a Deployment + LoadBalancer Service |
 
 ## Prerequisites
 
@@ -22,9 +26,9 @@ Deploys a Node.js Express app to a Kubernetes cluster on **AWS EKS**. The greeti
 - Python 3.10+
 - Docker running (for image builds)
 
-**AWS authentication**
+**AWS Authentication**
 
-Pulumi and `kubectl` both call AWS APIs. You must be authenticated **before** `pulumi up` or configuring the cluster context.
+Pulumi and `kubectl` both call AWS APIs. You must be authenticated **before** running `pulumi up` or configuring the cluster context.
 
 Either:
 
@@ -44,11 +48,11 @@ Either:
 
 2. **Another method** — `aws configure`, `aws sso login`, or exported `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` / `AWS_SESSION_TOKEN` with the same IAM permissions below.
 
-**IAM permissions**
+**IAM Permissions**
 
-The deploying principal needs permission to create and manage the resources this stack provisions. For a demo, attaching **AdministratorAccess** (or an equivalent admin role) is simplest. Minimum service coverage:
+The deploying principal needs permission to create and manage the resources this stack provisions. For a quick start, attaching **AdministratorAccess** (or an equivalent admin role) works. Minimum service coverage:
 
-| Service | What this stack uses it for |
+| Service | Used For |
 | --- | --- |
 | **EKS** | Cluster, node groups, addons, access config, `DescribeCluster` |
 | **EC2** | VPC, subnets, routes, IGW, NAT, security groups, launch templates, instances |
@@ -59,7 +63,8 @@ The deploying principal needs permission to create and manage the resources this
 | **CloudWatch Logs** | EKS control plane logging (if enabled) |
 | **STS** | `GetCallerIdentity` (verify credentials) |
 
-Representative actions (not exhaustive):
+<details>
+<summary>Representative IAM actions (not exhaustive)</summary>
 
 - `eks:*` (or create/describe/update/delete cluster, nodegroup, addon, access entry)
 - `ec2:*` on VPC networking, security groups, instances, launch templates
@@ -71,10 +76,13 @@ Representative actions (not exhaustive):
 - `sts:GetCallerIdentity`
 
 Without these, `pulumi up` fails (often at EKS, ECR, or the node ASG). `kubectl` also needs `eks:DescribeCluster` and permission to call `aws eks get-token` for the cluster.
+</details>
 
-> EKS incurs real AWS cost. Tear down with `pulumi destroy` when finished.
+> **Cost warning:** EKS incurs real AWS charges. Tear down with `pulumi destroy` when finished.
 
-## Setup
+## Quick Start
+
+### 1. Setup
 
 ```bash
 cd pulumi
@@ -91,13 +99,13 @@ pulumi config set name Pulumi          # overrides default "World"
 # pulumi config set aws:region us-east-1
 ```
 
-## Deploy
+### 2. Deploy
 
 ```bash
 pulumi up
 ```
 
-When the LoadBalancer is ready:
+Once the LoadBalancer is ready, open the URL in a browser:
 
 ```bash
 pulumi stack output url
@@ -105,7 +113,9 @@ curl "$(pulumi stack output url)"
 # Hello Pulumi
 ```
 
-Change the greeting without rebuilding the image logic—just config + update:
+### 3. Change the Greeting (Config-Only Update)
+
+No image rebuild needed — just update the config and redeploy:
 
 ```bash
 pulumi config set name Alice
@@ -114,9 +124,11 @@ curl "$(pulumi stack output url)"
 # Hello Alice
 ```
 
-## Configure kubectl
+Reload the page in a browser to see the updated greeting.
 
-After `pulumi up`, use the stack's kubeconfig (recommended — matches what Pulumi deployed):
+## Working with kubectl
+
+After `pulumi up`, export the stack's kubeconfig (recommended — matches what Pulumi deployed):
 
 ```bash
 cd pulumi
@@ -126,7 +138,7 @@ pulumi stack output kubeconfig --show-secrets > kubeconfig.yaml
 export KUBECONFIG="$PWD/kubeconfig.yaml"
 ```
 
-Check the cluster and app:
+Inspect the cluster and app:
 
 ```bash
 kubectl get nodes
@@ -139,7 +151,7 @@ curl "$(pulumi stack output url)"
 
 `kubeconfig.yaml` contains cluster credentials — do not commit it (listed in `.gitignore`).
 
-### LoadBalancer DNS (AWS CLI)
+### LoadBalancer DNS (alternative lookups)
 
 Pulumi output is easiest: `pulumi stack output url`
 
@@ -157,7 +169,9 @@ aws elb describe-load-balancers --region us-west-2 \
   --output table
 ```
 
-## Local app smoke test (no cloud)
+## Local Smoke Test (No Cloud Required)
+
+Run the app locally to verify behavior before deploying:
 
 ```bash
 cd app
@@ -167,7 +181,7 @@ npm start
 # curl http://localhost:8080  → Hello Pulumi
 ```
 
-## Tear down
+## Tear Down
 
 ```bash
 pulumi destroy

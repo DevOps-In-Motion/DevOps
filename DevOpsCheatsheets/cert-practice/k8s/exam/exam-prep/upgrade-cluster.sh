@@ -56,6 +56,17 @@ service kubelet restart
 #  #  kube-scheduler
 #  #  cloud controller manager, if you use one
 
+# install cni from /root/cri-docker_0.3.16.3-0.debian.deb
+sudo dpkg -i /root/cri-docker_0.3.16.3-0.debian.deb
+sudo systemctl restart cri-docker
+# check if cnit service is running
+systemctl status cri-docker
+
+# sudo systemctl restart kubelet
+
+
+
+
 ### ----- ETCD Upgrade - Manual way ----- ###
 # https://github.com/etcd-io/etcd/releases
 # backup ETCD
