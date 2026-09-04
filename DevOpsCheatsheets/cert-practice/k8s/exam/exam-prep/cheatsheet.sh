@@ -167,6 +167,18 @@ kubectl config use-context john-context
 # Switch back to admin context
 kubectl config use-context kubernetes-admin@kubernetes
 
+# View the kubeconfig file
+kubectl --kubeconfig /course/1/kubeconfig config view -o json | less
+
+# Get the contexts of the kubeconfig file
+kubectl --kubeconfig /path/to/kubeconfig.yaml config get-contexts -o name > contexts.txt
+
+kubectl config view -o jsonpath='{.users[?(@.name == "e2e")].user.password}'
+
+kubectl --kubeconfig /course/1/kubeconfig config view --raw \
+  -o jsonpath='{.users[?(@.name=="account-0027")].user.client-certificate-data}' \
+  | base64 -d > /course/1/cert
+
 
 ### ------ Taints ----- ###
 
@@ -421,6 +433,13 @@ kubectl debug pod-name -it --image=busybox --target=container-name --share-proce
 # autoscale a deployment
 ## Configure the HPA to cautiously scale down pods by setting a stabilization window of 300 seconds to prevent rapid fluctuations in pod count.
 kubectl autoscale deployment kkapp-deploy --cpu=50% --min=1 --max=10 --name=kkapp-deploy-hpa --stabilization-window-seconds=300
+
+kubectl get pods -n project-c13 \
+  -o custom-columns='NAME:.metadata.name,QOS:.status.qosClass,PRIORITY:.spec.priority,PCLASS:.spec.priorityClassName'
+
+kubectl get pods -n project-c13 -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.status.qosClass}{"\n"}{end}'
+# if there is no priorityClassName, then the priority is set to 0
+kubectl get pods -n project-c13 -o custom-columns='NAME:.metadata.name,QOS:.status.qosClass'
 
 ### ----- System Admin ----- ###
 # check the crds

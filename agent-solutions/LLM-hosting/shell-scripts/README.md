@@ -1,0 +1,1 @@
+Shell scripts to use for the install if building a cluster from scratch or ad hoc checks and tests.
